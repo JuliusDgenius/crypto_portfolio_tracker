@@ -1,0 +1,18 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "sourceMap": true,
+    "declaration": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "target": "ES2021",
+    "module": "commonjs",
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@lib/*": ["libs/*/src"],
+      "@lib/core": ["libs/core/src"],
+      "@lib/core/*": ["libs/core/src/*"]
+    }
+  }
+}

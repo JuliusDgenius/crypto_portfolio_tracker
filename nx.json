@@ -1,0 +1,78 @@
+{
+  "$schema": "./node_modules/nx/schemas/nx-schema.json",
+  "defaultBase": "main",
+  "targetDefaults": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["{projectRoot}/dist"],
+      "cache": true
+    },
+    "start": {
+      "dependsOn": ["^start"],
+      "cache": true
+    },
+    "lint": {
+      "dependsOn": ["^lint"],
+      "cache": true
+    },
+    "test": {
+      "dependsOn": ["^test"],
+      "outputs": ["{projectRoot}/coverage"],
+      "cache": true
+    },
+    "e2e-ci--**/*": {
+      "dependsOn": ["^build"]
+    }
+  },
+  "plugins": [
+    {
+      "plugin": "@nx/eslint/plugin",
+      "options": {
+        "targetName": "eslint:lint"
+      }
+    },
+    {
+      "plugin": "@nx/jest/plugin",
+      "options": {
+        "targetName": "test"
+      }
+    },
+    {
+      "plugin": "@nx/vite/plugin",
+      "options": {
+        "buildTargetName": "build",
+        "testTargetName": "test",
+        "serveTargetName": "serve",
+        "previewTargetName": "preview",
+        "serveStaticTargetName": "serve-static",
+        "typecheckTargetName": "typecheck"
+      }
+    },
+    {
+      "plugin": "@nx/cypress/plugin",
+      "options": {
+        "targetName": "e2e",
+        "openTargetName": "open-cypress",
+        "componentTestingTargetName": "component-test",
+        "ciTargetName": "e2e-ci"
+      }
+    }
+  ],
+  "generators": {
+    "@nx/react": {
+      "application": {
+        "babel": true,
+        "style": "tailwind",
+        "linter": "eslint",
+        "bundler": "vite"
+      },
+      "component": {
+        "style": "tailwind"
+      },
+      "library": {
+        "style": "tailwind",
+        "linter": "eslint"
+      }
+    }
+  }
+}
