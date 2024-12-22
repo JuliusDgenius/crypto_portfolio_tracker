@@ -8,4 +8,7 @@ export * from './interceptors';
 export * from './pipes';
 
 // Module
-export * from './common.module'; 
+export * from './common.module';
+
+// Email
+export * from './email';

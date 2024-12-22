@@ -8,7 +8,12 @@
     "noImplicitAny": true,
     "strictBindCallApply": true,
     "forceConsistentCasingInFileNames": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    "baseUrl": ".",
+    "paths": {
+      "@libs/*": ["libs/*/src"],
+      "@libs/common": ["libs/common/src"],
+    }
   },
   "include": ["apps/**/*", "libs/**/*"],
   "references": [

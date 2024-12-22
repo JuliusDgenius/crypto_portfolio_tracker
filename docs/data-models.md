@@ -6,7 +6,7 @@ model User {
   id              String           @id @default(uuid())
   email           String           @unique
   password        String
-  username        String           @unique
+  name        String           @unique
   verified        Boolean          @default(false)
   profilePicture  String?
   twoFactorEnabled Boolean         @default(false)

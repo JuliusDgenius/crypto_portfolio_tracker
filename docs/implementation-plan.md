@@ -1,6 +1,7 @@
 # Implementation Plan - Cryptocurrency Portfolio Tracker
 
-## Backend File Structure
+## Project File Structure
+
 crypto-portfolio-tracker/
 ├── apps/
 │   ├── api/                        # Backend NestJS application
