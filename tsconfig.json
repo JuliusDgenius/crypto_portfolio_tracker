@@ -1,4 +1,5 @@
 {
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "removeComments": true,
     "allowSyntheticDefaultImports": true,
@@ -9,17 +10,36 @@
     "strictBindCallApply": true,
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
-    "baseUrl": ".",
+    "baseUrl": "./",
     "paths": {
-      "@libs/*": ["libs/*/src"],
-      "@libs/common": ["libs/common/src"],
+      "@lib/shared": [
+        "libs/shared/src"
+      ],
+      "@lib/shared/*": [
+        "libs/shared/src/*"
+      ]
     }
   },
-  "include": ["apps/**/*", "libs/**/*"],
+  "include": [
+    "apps/**/*",
+    "libs/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/dist"
+  ],
   "references": [
     {
-      "path": "libs/config/tsconfig.lib.json"
+      "path": "libs/core"
+    },
+    {
+      "path": "libs/common"
+    },
+    {
+      "path": "libs/auth"
+    },
+    {
+      "path": "libs/database"
     }
-  ],
-  "extends": "./tsconfig.base.json"
+  ]
 }

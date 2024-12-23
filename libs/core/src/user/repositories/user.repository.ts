@@ -20,13 +20,18 @@ export class UserRepository {
    * @param dto - The data transfer object containing user details.
    * @returns The created user.
    */
-  async create(dto: CreateUserDto): Promise<IUser> {
+  async create(dto: CreateUserDto): Promise<Partial<IUser>> {
+    // Validate the DTO before creating the user
+    if (!dto.email || !dto.password) {
+      throw new Error('Email and password are required.');
+    }
+
     const hashedPassword = await this.passwordService.hash(dto.password);
     
     return this.prisma.user.create({
       data: {
         email: dto.email,
-        name: dto.name,
+        name: dto.name || null,
         verified: false,
         twoFactorEnabled: false,
         password: hashedPassword,
@@ -145,5 +150,14 @@ export class UserRepository {
         },
       },
     });
+  }
+
+  /**
+   * Invalidates the refresh token for a user.
+   * @param userId - The ID of the user whose refresh token is to be invalidated.
+   */
+  async invalidateRefreshToken(userId: string): Promise<void> {
+    // Logic to invalidate the refresh token, e.g., removing it from the database
+    // This could involve setting a flag or deleting the token from a tokens table
   }
 }

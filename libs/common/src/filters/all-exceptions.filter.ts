@@ -1,5 +1,5 @@
 import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common';
-import { BaseException } from '@lib/core';
+import { BaseException } from '../exceptions';
 
 /**
  * Global exception filter to handle all exceptions
@@ -15,7 +15,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       exception instanceof HttpException
         ? exception.getStatus()
         : exception instanceof BaseException
-        ? exception.status
+        ? exception.statusCode
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
     const message = 

@@ -1,6 +1,6 @@
 import { INestApplication, Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
-import { BaseException } from '@lib/core';
+import { BaseException } from '@libs/common';
 import { RetryOptions } from './interfaces/retry-options.interface';
 
 /**

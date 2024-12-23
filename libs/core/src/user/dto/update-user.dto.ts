@@ -1,6 +1,6 @@
 // libs/core/src/user/dto/update-user.dto.ts
 import { IsEmail, IsString, IsOptional, IsObject } from 'class-validator';
-import { UserPreferences } from '../interfaces/user.interface';
+import { JsonPreferences } from '../interfaces/user.interface';
 
 export class UpdateUserDto {
   @IsEmail()
@@ -9,7 +9,7 @@ export class UpdateUserDto {
 
   @IsString()
   @IsOptional()
-  username?: string;
+  name?: string;
 
   @IsString()
   @IsOptional()
@@ -17,5 +17,5 @@ export class UpdateUserDto {
 
   @IsObject()
   @IsOptional()
-  preferences?: Partial<UserPreferences>;
+  preferences?: Partial<JsonPreferences>;
 }

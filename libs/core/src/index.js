@@ -16,10 +16,13 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./core.module"), exports);
 __exportStar(require("./core.service"), exports);
+__exportStar(require("./user/user.module"), exports);
+__exportStar(require("./user/repositories"), exports);
+__exportStar(require("./user/services"), exports);
 __exportStar(require("./interfaces/base.interface"), exports);
 __exportStar(require("./interfaces/repository.interface"), exports);
 __exportStar(require("./types/common.types"), exports);
-__exportStar(require("./dto/base.dto"), exports);
+__exportStar(require("./user/dto"), exports);
 __exportStar(require("./exceptions/base.exception"), exports);
 __exportStar(require("./base/base.entity"), exports);
 //# sourceMappingURL=index.js.map

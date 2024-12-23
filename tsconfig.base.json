@@ -10,9 +10,17 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@lib/*": ["libs/*/src"],
-      "@lib/core": ["libs/core/src"],
-      "@lib/core/*": ["libs/core/src/*"]
-    }
+      "@libs/core": ["libs/core/src/index.ts"],
+      
+      "@libs/common": ["libs/common/src/index.ts"],
+      
+      "@libs/auth": ["libs/auth/src/index.ts"],
+     
+      "@libs/database": ["libs/database/src/index.ts"],
+      
+    },
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "resolveJsonModule": true
   }
 }

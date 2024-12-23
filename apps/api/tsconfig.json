@@ -1,5 +1,5 @@
 {
-  "extends": "../../tsconfig.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "module": "commonjs",
     "declaration": true,
@@ -10,8 +10,7 @@
     "allowSyntheticDefaultImports": true,
     "target": "ES2021",
     "sourceMap": true,
-    "outDir": "../../dist/apps/api",
-    "rootDir": ".",
+    // "rootDir": "../../", // Set to the root of the monorepo
     "baseUrl": "./",
     "incremental": true,
     "skipLibCheck": true,
@@ -20,13 +19,19 @@
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
-    "paths": {
-      "@lib/*": ["../../libs/*/src"]
-    }
   },
-  "include": ["src/**/*", "test/**/*"],
+  "include": [
+    "src/**/*",
+    "test/**/*",
+  ],
   "exclude": ["node_modules", "dist"],
   "references": [
+    {
+      "path": "../../libs/auth/tsconfig.lib.json"
+    },
+    {
+      "path": "../../libs/common/tsconfig.lib.json"
+    },
     {
       "path": "../../libs/database/tsconfig.lib.json"
     }

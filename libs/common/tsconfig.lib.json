@@ -1,11 +1,20 @@
 {
-  "extends": "../../tsconfig.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "declaration": true,
     "outDir": "../../dist/libs/common",
-    "rootDir": "./src",
-    "composite": true
+    "declaration": true,
+    "declarationDir": "../../dist/libs/common",
+    "composite": true,
+    "rootDir": "./src", // Correct!
+    "baseUrl": ".",
+    "paths": {
+      "@lib/core": ["../../libs/core/src/index.ts"],
+      "@lib/common": ["libs/common/src/index.ts"],
+      "@lib/auth": ["../../libs/auth/src/index.ts"],
+      "@lib/database": ["../../libs/database/src/index.ts"]
+    },
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "test", "**/*spec.ts"]
-} 
+  "include": ["src/**/*.ts"],
+  "exclude": ["jest.config.ts", "**/*.spec.ts", "**/*.test.ts"],
+  "references": [] // No references
+}

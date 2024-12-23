@@ -12,3 +12,6 @@ export * from './common.module';
 
 // Email
 export * from './email';
+
+// Exceptions
+export * from './exceptions';

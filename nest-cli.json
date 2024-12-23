@@ -5,7 +5,10 @@
   "root": "apps/api",
   "compilerOptions": {
     "webpack": true,
-    "tsConfigPath": "apps/api/tsconfig.app.json"
+    "tsConfigPath": "apps/api/tsconfig.app.json",
+    "webpackConfig": {
+      "config": "webpack.config.js"
+    }
   },
   "projects": {
     "api": {
@@ -44,6 +47,33 @@
         "tsConfigPath": "libs/config/tsconfig.lib.json"
       }
     },
+    "auth": {
+      "type": "library",
+      "root": "libs/auth",
+      "entryFile": "index",
+      "sourceRoot": "libs/auth/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/auth/tsconfig.lib.json"
+      }
+    },
+    "crypto": {
+      "type": "library",
+      "root": "libs/crypto",
+      "entryFile": "index",
+      "sourceRoot": "libs/crypto/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/crypto/tsconfig.lib.json"
+      }
+    },
+    "portfolio": {
+      "type": "library",
+      "root": "libs/portfolio",
+      "entryFile": "index",
+      "sourceRoot": "libs/portfolio/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/portfolio/tsconfig.lib.json"
+      }
+    },
     "core": {
       "type": "library",
       "root": "libs/core",
@@ -51,6 +81,15 @@
       "sourceRoot": "libs/core/src",
       "compilerOptions": {
         "tsConfigPath": "libs/core/tsconfig.lib.json"
+      }
+    },
+    "shared": {
+      "type": "library",
+      "root": "libs/shared",
+      "entryFile": "index",
+      "sourceRoot": "libs/shared/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/shared/tsconfig.lib.json"
       }
     }
   }
