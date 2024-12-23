@@ -15,3 +15,6 @@ export * from './email';
 
 // Exceptions
 export * from './exceptions';
+
+// guards
+export * from './guards'

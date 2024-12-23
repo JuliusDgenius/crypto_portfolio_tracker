@@ -1,4 +1,5 @@
 {
+ "$schema": "https://json.schemastore.org/nest-cli",
   "collection": "@nestjs/schematics",
   "sourceRoot": "apps/api/src",
   "monorepo": true,
@@ -6,9 +7,11 @@
   "compilerOptions": {
     "webpack": true,
     "tsConfigPath": "apps/api/tsconfig.app.json",
-    "webpackConfig": {
-      "config": "webpack.config.js"
-    }
+    "plugins": [
+      {
+        "name": "@nestjs/swagger"
+      }
+    ]
   },
   "projects": {
     "api": {

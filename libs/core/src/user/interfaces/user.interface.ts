@@ -10,8 +10,10 @@ export interface IUser {
   createdAt: Date;
   updatedAt: Date;
 
-  // TODO:Relationships
+  
 }
+
+// TODO:Relationships
 
 export interface JsonPreferences {
   currency: string;

@@ -1,11 +1,24 @@
 {
-    "extends": "../../tsconfig.base.json",
-    "compilerOptions": {
-      "declaration": true,
-      "outDir": "../../dist/libs/database",
-      "rootDir": "./src",
-      "composite": true
-    },
-    "include": ["src/**/*"],
-    "exclude": ["node_modules", "dist", "test", "**/*spec.ts"]
-  }
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "declaration": true,
+    "removeComments": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "es2017",
+    "sourceMap": true,
+    "outDir": "../../dist/libs/database",
+    "rootDir": "src",
+    "composite": true ,
+    "baseUrl": ".",
+    "incremental": true,
+    "paths": {
+      "@libs/common": ["../../libs/common/src/index"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "test", "**/*spec.ts"],
+  "references": [
+    { "path": "../common" } 
+  ]
+}

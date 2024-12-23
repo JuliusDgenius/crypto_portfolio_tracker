@@ -1,17 +1,26 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "../../dist/libs/core", // Correct and unique
-    "declaration": true,
-    "declarationDir": "../../dist/libs/core", // Important: Same as outDir
-    "composite": true,
     "module": "commonjs",
-    "target": "ES2021",
-    "types": ["node"]
+    "declaration": true,
+    "removeComments": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "es2017",
+    "sourceMap": true,
+    "outDir": "../../dist/libs/core",
+    "rootDir": "src",
+    "composite": true,
+    "baseUrl": ".",
+    "incremental": true,
+    "paths": {
+      "@libs/database": ["../database/src/index"],
+      "@libs/common": ["../common/src/index"],
+      "@libs/core": ["../core/src/index"],
+    }
   },
   "include": ["src/**/*"],
-  "exclude": ["jest.config.ts", "**/*.spec.ts", "**/*.test.ts"],
+  "exclude": ["node_modules", "dist", "test", "**/*spec.ts"],
   "references": [
-    { "path": "../../dist/libs/database/tsconfig.lib.json" } // Correct reference!
+    {"path": "../common"}
   ]
 }

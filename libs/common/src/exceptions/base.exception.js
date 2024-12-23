@@ -2,11 +2,11 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BaseException = void 0;
 class BaseException extends Error {
-    constructor(message, code, status = 500) {
+    constructor(message, code, statusCode = 500) {
         super(message);
         this.message = message;
         this.code = code;
-        this.status = status;
+        this.statusCode = statusCode;
         this.name = this.constructor.name;
     }
 }

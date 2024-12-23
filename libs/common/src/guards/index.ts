@@ -10,4 +10,7 @@ export * from './security/throttler.guard';
 export * from './security/websocket.guard';
 
 // API Guards
-export * from './api-key.guard'; 
+export * from './api-key.guard';
+
+// Validator guards
+export * from './validation-guards';

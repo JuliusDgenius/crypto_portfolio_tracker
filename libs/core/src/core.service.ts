@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { BaseException } from './exceptions/base.exception';
+import { BaseException } from '../../common/src';
 
 /**
  * Core service providing fundamental functionality

@@ -1,25 +1,11 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "../../dist/libs/database",
     "declaration": true,
-    "declarationDir": "../../dist/libs/database",
-    "composite": true,
-    "module": "commonjs",
-    "target": "ES2021",
     "types": ["node"],
-    "baseUrl": ".",
-    "paths": {
-      "@lib/core": ["../../libs/core/src/index.ts"],
-      "@lib/common": ["../../libs/common/src/index.ts"],
-      "@lib/auth": ["../../libs/auth/src/index.ts"],
-      "@lib/database": ["libs/database/src/index.ts"]
-    },
-    "rootDir": "./src" // Correct rootDir
+    "target": "es2017"
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["jest.config.ts", "**/*.spec.ts", "**/*.test.ts"],
-   "references": [
-    { "path": "../common/tsconfig.lib.json" } // Correct path
-  ]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "**/*.spec.ts", "**/*.test.ts"]
 }

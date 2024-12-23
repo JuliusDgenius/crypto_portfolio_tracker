@@ -1,45 +1,25 @@
 {
-  "extends": "./tsconfig.base.json",
   "compilerOptions": {
+    "module": "commonjs",
+    "declaration": false,
     "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
     "allowSyntheticDefaultImports": true,
+    "target": "es2017",
+    "sourceMap": true,
     "outDir": "./dist",
-    "incremental": true,
-    "strictNullChecks": true,
-    "noImplicitAny": true,
-    "strictBindCallApply": true,
-    "forceConsistentCasingInFileNames": true,
-    "noFallthroughCasesInSwitch": true,
     "baseUrl": "./",
+    "incremental": true,
+    "skipLibCheck": true,
     "paths": {
-      "@lib/shared": [
-        "libs/shared/src"
-      ],
-      "@lib/shared/*": [
-        "libs/shared/src/*"
-      ]
+      "@libs/auth": ["libs/auth/src"],
+      "@libs/common": ["libs/common/src"],
+      "@libs/config": ["libs/config/src"],
+      "@libs/core": ["libs/core/src"],
+      "@libs/database": ["libs/database/src"],
+      "@libs/portfolio": ["libs/portfolio/src"]
     }
   },
-  "include": [
-    "apps/**/*",
-    "libs/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "**/dist"
-  ],
-  "references": [
-    {
-      "path": "libs/core"
-    },
-    {
-      "path": "libs/common"
-    },
-    {
-      "path": "libs/auth"
-    },
-    {
-      "path": "libs/database"
-    }
-  ]
+  "exclude": ["node_modules", "dist"]
 }

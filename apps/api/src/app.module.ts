@@ -1,5 +1,5 @@
-import { DatabaseModule } from '@lib/database';
-import { AuthModule } from '@lib/auth';
+import { DatabaseModule } from '../../../libs/database/src';
+import { AuthModule } from '../../../libs/auth/src';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config'
 
