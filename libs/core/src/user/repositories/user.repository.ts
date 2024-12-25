@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '@libs/database';
-import { IUser, JsonPreferences } from '@libs/core';
+import { PrismaService } from '../../../../database/src';
+import { IUser, JsonPreferences } from '../../../../core/src/user/interfaces';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { PasswordService } from '../services/password.service';
-import { Prisma, User } from '@prisma/client'; // Correct import
-import { transformValidatePrismaUser } from '../../../../common/src'; // Adjust path
+import { Prisma, User } from '@prisma/client';
+import { transformValidatePrismaUser } from '../../../../common/src';
 
 @Injectable()
 export class UserRepository {

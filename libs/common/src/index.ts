@@ -19,3 +19,6 @@ export * from './exceptions';
 // guards
 export * from './guards';
 
+// interfaces
+export * from './interfaces';
+
