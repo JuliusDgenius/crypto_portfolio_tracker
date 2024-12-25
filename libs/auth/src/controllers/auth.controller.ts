@@ -9,11 +9,12 @@ import {
     Get,
     Req,
   } from '@nestjs/common';
-  import { AuthService, JwtRefreshGuard } from '@libs/auth';
-  import { RegisterDto } from '@libs/auth';
-  import { LoginDto } from '@libs/auth';
-  import { JwtAuthGuard } from '@libs/auth';
-  import { Tokens } from '@libs/auth';
+  import { AuthService } from '../services/auth.service';
+  import { JwtRefreshGuard  } from '../guards';
+  import { RegisterDto } from '../dto';
+  import { LoginDto } from '../dto';
+  import { JwtAuthGuard } from '../guards';
+  import { Tokens } from '../';
   
   @Controller('auth')
   export class AuthController {
@@ -22,6 +23,7 @@ import {
     @Post('register')
     @HttpCode(HttpStatus.CREATED)
     async register(@Body() registerDto: RegisterDto) {
+      console.log("I am hit with:", registerDto);
       return this.authService.register(registerDto);
     }
   

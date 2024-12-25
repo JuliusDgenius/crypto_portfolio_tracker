@@ -1,39 +1,13 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "module": "commonjs",
-    "declaration": true,
-    "composite": true,
-    "removeComments": true,
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
-    "allowSyntheticDefaultImports": true,
-    "target": "ES2021",
-    "sourceMap": true,
-    // "rootDir": "../../", // Set to the root of the monorepo
+    "outDir": "../../dist/apps/api",
     "baseUrl": "./",
-    "incremental": true,
-    "skipLibCheck": true,
-    "strictNullChecks": false,
-    "noImplicitAny": false,
-    "strictBindCallApply": false,
-    "forceConsistentCasingInFileNames": false,
-    "noFallthroughCasesInSwitch": false,
-  },
-  "include": [
-    "src/**/*",
-    "test/**/*",
-  ],
-  "exclude": ["node_modules", "dist"],
-  "references": [
-    {
-      "path": "../../libs/auth/tsconfig.lib.json"
-    },
-    {
-      "path": "../../libs/common/tsconfig.lib.json"
-    },
-    {
-      "path": "../../libs/database/tsconfig.lib.json"
+    "paths": {
+      "@app/*": ["src/*"]
     }
-  ]
+  },
+  "entryFile": "src/main.ts",
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "test", "**/*spec.ts"]
 }

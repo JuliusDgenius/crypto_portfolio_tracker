@@ -1,3 +1,3 @@
-import { CreateUserDto } from '@libs/core';
+import { CreateUserDto } from '../../../core/src';
 
 export class RegisterDto extends CreateUserDto {}

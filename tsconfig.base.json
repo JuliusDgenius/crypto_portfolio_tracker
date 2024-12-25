@@ -15,12 +15,8 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@libs/auth": ["libs/auth/src/index.ts"],
-      "@libs/common": ["libs/common/src/index.ts"],
-      "@libs/config": ["libs/config/src/index.ts"],
-      "@libs/core": ["libs/core/src/index.ts"],
-      "@libs/database": ["libs/database/src/index.ts"],
-      "@libs/portfolio": ["libs/portfolio/src/index.ts"]
+      "@libs/*": ["libs/*/src"],  // Make this more flexible
+      "@apps/*": ["apps/*/src"]   // Add this for app imports
     }
   },
   "exclude": ["node_modules", "tmp"]

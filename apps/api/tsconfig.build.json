@@ -1,8 +1,0 @@
-{
-  "extends": "../../tsconfig.base.json", // changed from ./tsconfig.json
-  // Added CompilerOptions key
-  "compilerOptions": {
-    "outDir": "../../dist/apps/api"
-  },
-  "exclude": ["node_modules", "test", "dist", "**/*spec.ts"]
-}

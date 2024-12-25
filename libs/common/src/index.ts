@@ -17,4 +17,5 @@ export * from './email';
 export * from './exceptions';
 
 // guards
-export * from './guards'
+export * from './guards';
+

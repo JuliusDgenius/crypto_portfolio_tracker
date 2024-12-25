@@ -1,114 +1,163 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
-import { EmailTemplateService } from './email-template.service';
 import { SentMessageInfo } from 'nodemailer';
 
-export interface EmailOptions {
-  to: string | string[];
-  subject: string;
-  template?: string;
-  context?: Record<string, any>;
-  text?: string;
-  html?: string;
+interface EmailConfig {
+  host: string;
+  port: number;
+  secure: boolean;
+  auth: {
+    user: string;
+    pass: string;
+  };
+  debug?: boolean;
+  logger?: boolean;
+  mock?: boolean;
+  baseUrl: string;  // Base URL for the application (for creating verification/reset links)
+  supportEmail: string;  // Support email address to show in templates
 }
 
 @Injectable()
 export class EmailService {
-  private readonly transporter: nodemailer.Transporter;
   private readonly logger = new Logger(EmailService.name);
+  private transporter: nodemailer.Transporter;
+  private initialized = false;
 
-  constructor(
-    private readonly configService: ConfigService,
-    private readonly templateService: EmailTemplateService,
-  ) {
-    this.transporter = nodemailer.createTransport({
-      host: this.configService.get<string>('EMAIL_HOST'),
-      port: this.configService.get<number>('EMAIL_PORT'),
-      secure: this.configService.get<boolean>('EMAIL_SECURE', true),
-      auth: {
-        user: this.configService.get<string>('EMAIL_USER'),
-        pass: this.configService.get<string>('EMAIL_PASSWORD'),
-      },
+  constructor(private readonly config: EmailConfig) {
+    this.initializeTransporter().catch(error => {
+      this.logger.warn(`Email service initialization failed: ${error.message}`);
+      this.initialized = false;
     });
   }
 
-  async onModuleInit() {
+  private async initializeTransporter() {
     try {
-      await this.transporter.verify();
-      this.logger.log('Email service initialized successfully');
-    } catch (error) {
-      this.logger.error('Failed to initialize email service', error);
-      throw error;
-    }
-  }
-
-  async sendEmail(options: EmailOptions): Promise<SentMessageInfo> {
-    try {
-      let html = options.html;
-      let text = options.text;
-
-      if (options.template) {
-        html = await this.templateService.renderTemplate(
-          options.template,
-          options.context || {},
-        );
+      if (this.config.mock) {
+        this.logger.log('Initializing mock email transport');
+        this.transporter = nodemailer.createTransport({
+          name: 'mock',
+          version: '1.0.0',
+          send: (mail, callback) => {
+            const mockResponse: SentMessageInfo = {
+              messageId: `mock-${Date.now()}`,
+              envelope: {
+                from: mail.data.from as string,
+                to: (mail.data.to as string[]) || []
+              },
+              accepted: [(mail.data.to as string[])?.[0] || ''],
+              rejected: [],
+              pending: [],
+              response: 'Mock email sent successfully'
+            };
+            
+            this.logger.debug('Mock email sent:', mail.data);
+            callback(null, mockResponse);
+          },
+        });
+        this.initialized = true;
+        return;
       }
 
-      const mailOptions = {
-        from: this.configService.get<string>('EMAIL_FROM'),
-        to: options.to,
-        subject: options.subject,
-        text,
-        html,
-      };
+      this.transporter = nodemailer.createTransport(this.config);
 
-      const result = await this.transporter.sendMail(mailOptions);
-      this.logger.debug(`Email sent successfully to ${options.to}`);
-      return result;
+      // Verify connection configuration
+      await this.transporter.verify();
+      this.initialized = true;
+      this.logger.log('Email service initialized successfully');
     } catch (error) {
-      this.logger.error(`Failed to send email to ${options.to}`, error);
+      this.logger.error('Failed to initialize email service', error.stack);
       throw error;
     }
   }
 
-  async sendVerificationEmail(email: string, token: string): Promise<void> {
-    const verificationUrl = `${this.configService.get<string>('APP_URL')}/verify-email?token=${token}`;
-    
-    await this.sendEmail({
+  async sendMail(options: nodemailer.SendMailOptions) {
+    if (!this.initialized) {
+      this.logger.warn('Attempted to send email while service is not initialized');
+      return;
+    }
+
+    try {
+      const result = await this.transporter.sendMail(options);
+      this.logger.debug(`Email sent: ${result.messageId}`);
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to send email: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Sends a verification email to a user with a verification token.
+   * @param email - The recipient's email address
+   * @param token - The verification token
+   * @returns A promise that resolves when the email is sent
+   */
+  async sendVerificationEmail(email: string, token: string): Promise<SentMessageInfo> {
+    const template = await this.loadTemplate('verification');
+    const verificationUrl = `${this.config.baseUrl}/verify-email?token=${token}`;
+
+    const htmlContent = template.template({
+      verificationUrl,
+      supportEmail: this.config.supportEmail,
+      validityPeriod: '24 hours'
+    });
+
+    return this.sendMail({
       to: email,
-      subject: 'Verify Your Email Address',
-      template: 'verification',
-      context: {
-        verificationUrl,
-        supportEmail: this.configService.get<string>('SUPPORT_EMAIL'),
-      },
+      subject: template.subject,
+      html: htmlContent
     });
   }
 
-  async sendPasswordResetEmail(email: string, token: string): Promise<void> {
-    const resetUrl = `${this.configService.get<string>('APP_URL')}/reset-password?token=${token}`;
-    
-    await this.sendEmail({
+  /**
+   * Sends a password reset email to a user.
+   * @param email - The recipient's email address
+   * @param token - The password reset token
+   * @returns A promise that resolves when the email is sent
+   */
+  async sendPasswordResetEmail(email: string, token: string): Promise<SentMessageInfo> {
+    const template = await this.loadTemplate('password-reset');
+    const resetUrl = `${this.config.baseUrl}/reset-password?token=${token}`;
+
+    const htmlContent = template.template({
+      resetUrl,
+      supportEmail: this.config.supportEmail,
+      validityPeriod: '1 hour'
+    });
+    return this.sendMail({
       to: email,
-      subject: 'Reset Your Password',
-      template: 'password-reset',
-      context: {
-        resetUrl,
-        supportEmail: this.configService.get<string>('SUPPORT_EMAIL'),
-      },
+      subject: template.subject,
+      html: htmlContent
     });
   }
 
-  async sendWelcomeEmail(email: string, username: string): Promise<void> {
-    await this.sendEmail({
-      to: email,
-      subject: 'Welcome to Crypto Portfolio Tracker',
-      template: 'welcome',
-      context: {
-        username,
-        supportEmail: this.configService.get<string>('SUPPORT_EMAIL'),
-      },
-    });
+  /**
+   * Loads and compiles an email template from the templates directory.
+   * @param templateName - The name of the template to load (without extension)
+   * @returns A promise that resolves with the template configuration and compiled template
+   */
+  private async loadTemplate(templateName: string): Promise<EmailTemplate> {
+    try {
+      const templatePath = path.join(this.templatesDir, `${templateName}.hbs`);
+      const configPath = path.join(this.templatesDir, `${templateName}.config.json`);
+
+      // Read template file
+      const templateContent = await fs.promises.readFile(templatePath, 'utf-8');
+
+      // Read template configuration
+      const configContent = await fs.promises.readFile(configPath, 'utf-8');
+      const config = JSON.parse(configContent);
+
+      // Compile the template
+      const template = handlebars.compile(templateContent);
+
+      return {
+        subject: config.subject,
+        template
+      };
+    } catch (error) {
+      this.logger.error(`Failed to load template ${templateName}:`, error.stack);
+      throw new Error(`Failed to load email template: ${templateName}`);
+    }
   }
 }

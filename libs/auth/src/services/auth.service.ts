@@ -1,13 +1,13 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { EmailService } from '@libs/common';
-import { UserRepository, PasswordService } from '@libs/core';
-import { LoginDto } from '@libs/auth';
-import { RegisterDto } from '@libs/auth';
-import { ResetPasswordDto } from '@libs/auth';
-import { VerifyEmailDto } from '@libs/auth';
-import { Tokens, JwtPayload } from '@libs/auth';
+import { EmailService } from '../../../common/src';
+import { UserRepository, PasswordService } from '../../../core/src';
+import { LoginDto } from '../dto';
+import { RegisterDto } from '../dto';
+import { ResetPasswordDto } from '../dto';
+import { VerifyEmailDto } from '../dto';
+import { Tokens, JwtPayload } from '../interfaces';
 
 /**
  * AuthService handles authentication-related operations such as registration,
