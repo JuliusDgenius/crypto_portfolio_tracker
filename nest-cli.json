@@ -1,11 +1,23 @@
 {
+ "$schema": "https://json.schemastore.org/nest-cli",
   "collection": "@nestjs/schematics",
-  "sourceRoot": "apps/api/src",
   "monorepo": true,
   "root": "apps/api",
+  "sourceRoot": "apps/api/src",
   "compilerOptions": {
     "webpack": true,
-    "tsConfigPath": "apps/api/tsconfig.app.json"
+    "webpackConfigPath": "webpack.config.js",
+    "tsConfigPath": "tsconfig.build.json",
+    "deleteOutDir": true,
+    "plugins": [
+      {
+        "name": "@nestjs/swagger",
+        "options": {
+          "classValidatorShim": true,
+          "introspectComments": true
+        }
+      }
+    ]
   },
   "projects": {
     "api": {
@@ -14,7 +26,7 @@
       "entryFile": "main",
       "sourceRoot": "apps/api/src",
       "compilerOptions": {
-        "tsConfigPath": "apps/api/tsconfig.app.json"
+        "tsConfigPath": "apps/api/tsconfig.json"
       }
     },
     "common": {
@@ -23,7 +35,7 @@
       "entryFile": "index",
       "sourceRoot": "libs/common/src",
       "compilerOptions": {
-        "tsConfigPath": "libs/common/tsconfig.lib.json"
+        "tsConfigPath": "libs/common/tsconfig.json"
       }
     },
     "database": {
@@ -32,7 +44,7 @@
       "entryFile": "index",
       "sourceRoot": "libs/database/src",
       "compilerOptions": {
-        "tsConfigPath": "libs/database/tsconfig.lib.json"
+        "tsConfigPath": "libs/database/tsconfig.json"
       }
     },
     "config": {
@@ -41,7 +53,34 @@
       "entryFile": "index",
       "sourceRoot": "libs/config/src",
       "compilerOptions": {
-        "tsConfigPath": "libs/config/tsconfig.lib.json"
+        "tsConfigPath": "libs/config/tsconfig.json"
+      }
+    },
+    "auth": {
+      "type": "library",
+      "root": "libs/auth",
+      "entryFile": "index",
+      "sourceRoot": "libs/auth/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/auth/tsconfig.json"
+      }
+    },
+    "crypto": {
+      "type": "library",
+      "root": "libs/crypto",
+      "entryFile": "index",
+      "sourceRoot": "libs/crypto/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/crypto/tsconfig.json"
+      }
+    },
+    "portfolio": {
+      "type": "library",
+      "root": "libs/portfolio",
+      "entryFile": "index",
+      "sourceRoot": "libs/portfolio/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/portfolio/tsconfig.json"
       }
     },
     "core": {
@@ -50,7 +89,16 @@
       "entryFile": "index",
       "sourceRoot": "libs/core/src",
       "compilerOptions": {
-        "tsConfigPath": "libs/core/tsconfig.lib.json"
+        "tsConfigPath": "libs/core/tsconfig.json"
+      }
+    },
+    "shared": {
+      "type": "library",
+      "root": "libs/shared",
+      "entryFile": "index",
+      "sourceRoot": "libs/shared/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/shared/tsconfig.json"
       }
     }
   }

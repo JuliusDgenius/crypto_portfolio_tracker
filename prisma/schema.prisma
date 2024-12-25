@@ -14,11 +14,12 @@ datasource db {
 // Models
 
 model User {
-  id                String           @id @map("_id") @db.ObjectId
+  id                String           @id @default(auto()) @map("_id") @db.ObjectId
   email             String           @unique
   password          String
   name              String?
   profilePicture    String?
+  refreshTokenInvalidated Boolean    @default(false)
   verified          Boolean          @default(false)
   twoFactorEnabled  Boolean          @default(false)
   preferences       Json             // Stores currency, theme, notifications

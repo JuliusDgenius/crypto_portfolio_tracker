@@ -1,18 +1,23 @@
 {
   "compileOnSave": false,
   "compilerOptions": {
+    "rootDir": ".",
     "sourceMap": true,
-    "declaration": true,
+    "declaration": false,
+    "moduleResolution": "node",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "target": "ES2021",
-    "module": "commonjs",
+    "importHelpers": true,
+    "target": "es2017",
+    "module": "CommonJS",
+    "lib": ["es2020", "dom"],
     "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@lib/*": ["libs/*/src"],
-      "@lib/core": ["libs/core/src"],
-      "@lib/core/*": ["libs/core/src/*"]
+      "@libs/*": ["libs/*/src"],  // Make this more flexible
+      "@apps/*": ["apps/*/src"]   // Add this for app imports
     }
-  }
+  },
+  "exclude": ["node_modules", "tmp"]
 }

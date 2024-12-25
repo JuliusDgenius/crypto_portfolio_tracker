@@ -1,18 +1,19 @@
 export * from './core.module';
 export * from './core.service';
+export * from './user/user.module';
+export * from './user/repositories';
+export * from './user/services'
 
-// Interfaces
-export * from './interfaces/base.interface';
-export * from './interfaces/repository.interface';
+// This is the main entry point for the core library
+export * from './entities';
+export * from './types';
+export * from './constants'
 
 // Types
 export * from './types/common.types';
 
 // DTOs
-export * from './dto/base.dto';
-
-// Exceptions
-export * from './exceptions/base.exception';
+export * from './user/dto';
 
 // Entities
 export * from './base/base.entity';

@@ -1,7 +1,8 @@
 // libs/core/src/user/dto/create-user.dto.ts
-import { IsEmail, IsString, MinLength, Matches } from 'class-validator';
+import { IsEmail, IsString, MinLength, Matches, IsNotEmpty } from 'class-validator';
 
 export class CreateUserDto {
+  @IsNotEmpty()
   @IsEmail()
   email: string;
 

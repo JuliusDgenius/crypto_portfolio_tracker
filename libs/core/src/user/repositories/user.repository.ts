@@ -1,13 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '@libs/database';
-import { IUser } from '../interfaces/user.interface';
+import { PrismaService } from '../../../../database/src';
+import { IUser, JsonPreferences } from '../../../../core/src/user/interfaces';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { PasswordService } from '../services/password.service';
+import { Prisma, User } from '@prisma/client';
+import { transformValidatePrismaUser } from '../../../../common/src';
 
-/**
- * UserRepository handles the data access for user-related operations.
- */
 @Injectable()
 export class UserRepository {
   constructor(
@@ -15,135 +14,198 @@ export class UserRepository {
     private readonly passwordService: PasswordService,
   ) {}
 
-  /**
-   * Creates a new user with the provided data.
-   * @param dto - The data transfer object containing user details.
-   * @returns The created user.
-   */
-  async create(dto: CreateUserDto): Promise<IUser> {
+  async create(dto: CreateUserDto): Promise<Partial<IUser> | null> { // Return IUser | null
+    if (!dto.email || !dto.password) {
+      throw new Error('Email and password are required.');
+    }
+
     const hashedPassword = await this.passwordService.hash(dto.password);
-    
-    return this.prisma.user.create({
-      data: {
-        email: dto.email,
-        name: dto.name,
-        verified: false,
-        twoFactorEnabled: false,
-        password: hashedPassword,
-        preferences: {
-          currency: 'USD',
-          theme: 'light',
-          notifications: {
-            email: true,
-            push: false,
-            priceAlerts: false,
-          },
-        },
+
+    const defaultPreferences: Record<string, any> = { // Type the preferences
+      currency: 'USD',
+      theme: 'light',
+      notifications: {
+        email: true,
+        push: false,
+        priceAlerts: false,
       },
-    });
+    };
+
+    // Define the shape of our create input data
+    type CreateUserData = {
+      email: string;
+      name: string | null;
+      verified: boolean;
+      twoFactorEnabled: boolean;
+      password: string;
+      preferences: Prisma.JsonValue;
+    };
+
+    // Create our data object with the correct shape
+    const createData: CreateUserData = {
+      email: dto.email,
+      name: dto.name || null,
+      verified: false,
+      twoFactorEnabled: false,
+      password: hashedPassword,
+      preferences: defaultPreferences as Prisma.JsonValue,
+    };
+
+
+    const userData: Omit<Prisma.UserCreateInput, 'id'> = {
+      email: dto.email,
+      name: dto.name || null,
+      verified: false,
+      twoFactorEnabled: false,
+      password: hashedPassword,
+      preferences: defaultPreferences as Prisma.JsonValue, // Use typed preferences
+    };
+
+    try {
+      const prismaUser = await this.prisma.user.create({
+        data: createData as unknown as Prisma.UserCreateInput,
+      });
+
+      const user = transformValidatePrismaUser(prismaUser);
+      if (!user) {
+        console.error("Failed to validate created user data.");
+        return null; // Return null if validation fails
+      }
+      return user;
+
+    } catch (error) {
+      console.error("Error creating user:", error);
+      return null; // Return null in case of database errors
+    }
   }
 
-  /**
-   * Finds a user by their ID.
-   * @param id - The ID of the user to find.
-   * @returns The user if found, otherwise null.
-   */
   async findById(id: string): Promise<IUser | null> {
-    return this.prisma.user.findUnique({
-      where: { id },
-    });
-  }
+    try {
+        const prismaUser = await this.prisma.user.findUnique({ where: { id } });
+        return prismaUser ? transformValidatePrismaUser(prismaUser) : null;
+    } catch (error) {
+        console.error("Error finding user by ID:", error);
+        return null;
+    }
+}
 
-  /**
-   * Finds a user by their email.
-   * @param email - The email of the user to find.
-   * @returns The user if found, otherwise null.
-   */
+
   async findByEmail(email: string): Promise<IUser | null> {
-    return this.prisma.user.findUnique({
-      where: { email },
-    });
+      try {
+          const prismaUser = await this.prisma.user.findUnique({ where: { email } });
+          return prismaUser ? transformValidatePrismaUser(prismaUser) : null;
+      } catch (error) {
+          console.error("Error finding user by email:", error);
+          return null;
+      }
   }
 
-  /**
-   * Finds a user by their username.
-   * @param username - The username of the user to find.
-   * @returns The user if found, otherwise null.
-   */
-  async findByUsername(username: string): Promise<IUser | null> {
-    return this.prisma.user.findUnique({
-      where: { username },
-    });
+  async findByUsername(name: string): Promise<IUser | null> {
+      try {
+          const prismaUser = await this.prisma.user.findFirst({
+            where: { name }
+          });
+          return prismaUser ? transformValidatePrismaUser(prismaUser) : null;
+      } catch (error) {
+          console.error("Error finding user by username:", error);
+          return null;
+      }
   }
 
-  /**
-   * Updates a user's details.
-   * @param id - The ID of the user to update.
-   * @param dto - The data transfer object containing updated user details.
-   * @returns The updated user.
-   */
-  async update(id: string, dto: UpdateUserDto): Promise<IUser> {
-    return this.prisma.user.update({
-      where: { id },
-      data: dto,
-    });
+  async update(id: string, dto: UpdateUserDto): Promise<IUser | null> {
+    try {
+        const prismaUser = await this.prisma.user.update({
+          where: {
+            id
+          },
+          data: dto
+        });
+        return transformValidatePrismaUser(prismaUser);
+    } catch (error) {
+        console.error("Error updating user:", error);
+        return null;
+    }
+}
+
+  async updatePassword(
+    id: string, hashedPassword: string
+  ): Promise<IUser | null> {
+    try {
+        const prismaUser = await this.prisma.user.update({
+          where: {
+            id
+          },
+          data: { password: hashedPassword }
+        });
+        return transformValidatePrismaUser(prismaUser);
+    } catch (error) {
+        console.error("Error updating user password:", error);
+        return null;
+    }
+}
+
+  async verifyEmail(id: string): Promise<IUser | null> {
+    try {
+        const prismaUser = await this.prisma.user.update({
+          where: {
+            id
+          },
+          data: { verified: true }
+        });
+        return transformValidatePrismaUser(prismaUser);
+    } catch (error) {
+        console.error("Error verifying user email:", error);
+        return null;
+    }
+}
+
+  async toggle2FA(id: string, enabled: boolean): Promise<IUser | null> {
+    try {
+        const prismaUser = await this.prisma.user.update({
+          where: { id }, data: { twoFactorEnabled: enabled }
+        });
+        return transformValidatePrismaUser(prismaUser);
+    } catch (error) {
+        console.error("Error toggling 2FA:", error);
+        return null;
+    }
+}
+
+  async updatePreferences(
+    id: string, preferences: Partial<JsonPreferences>
+  ): Promise<IUser | null> {
+      try {
+          const user = await this.findById(id);
+          if (!user) {
+              return null;
+          }
+          const updatedPreferences: JsonPreferences = {
+              ...user.preferences,
+              ...preferences,
+          };
+          const prismaUser = await this.prisma.user.update({
+              where: { id },
+              data: { preferences: updatedPreferences as unknown as Prisma.JsonValue },
+          });
+          return transformValidatePrismaUser(prismaUser);
+      } catch (error) {
+          console.error("Error updating user preferences:", error);
+          return null;
+      }
   }
 
-  /**
-   * Updates a user's password.
-   * @param id - The ID of the user whose password is to be updated.
-   * @param hashedPassword - The new hashed password.
-   * @returns The updated user.
-   */
-  async updatePassword(id: string, hashedPassword: string): Promise<IUser> {
-    return this.prisma.user.update({
-      where: { id },
-      data: { password: hashedPassword },
-    });
-  }
-
-  /**
-   * Verifies a user's email.
-   * @param id - The ID of the user to verify.
-   * @returns The updated user with verified email.
-   */
-  async verifyEmail(id: string): Promise<IUser> {
-    return this.prisma.user.update({
-      where: { id },
-      data: { verified: true },
-    });
-  }
-
-  /**
-   * Toggles the two-factor authentication setting for a user.
-   * @param id - The ID of the user.
-   * @param enabled - Whether to enable or disable 2FA.
-   * @returns The updated user.
-   */
-  async toggle2FA(id: string, enabled: boolean): Promise<IUser> {
-    return this.prisma.user.update({
-      where: { id },
-      data: { twoFactorEnabled: enabled },
-    });
-  }
-
-  /**
-   * Updates a user's preferences.
-   * @param id - The ID of the user whose preferences are to be updated.
-   * @param preferences - The new preferences to apply.
-   * @returns The updated user.
-   */
-  async updatePreferences(id: string, preferences: Partial<IUser['preferences']>): Promise<IUser> {
-    const user = await this.findById(id);
-    
-    return this.prisma.user.update({
-      where: { id },
-      data: {
-        preferences: {
-          ...user.preferences,
-          ...preferences,
-        },
-      },
-    });
+  async invalidateRefreshToken(userId: string): Promise<void> {
+    // Implement your refresh token invalidation logic here.
+    try {
+      // Example: setting a flag in the database
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { refreshTokenInvalidated: true }, // Add this field to your schema
+      });
+    } catch (error) {
+      console.error("Error invalidating refresh token:", error);
+      // Consider re-throwing the error or handling it appropriately in your application
+      throw error
+    }
   }
 }

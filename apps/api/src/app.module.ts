@@ -1,4 +1,5 @@
-import { DatabaseModule } from '@lib/database';
+import { DatabaseModule } from '../../../libs/database/src';
+import { AuthModule } from '../../../libs/auth/src';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config'
 
@@ -8,7 +9,7 @@ import { ConfigModule } from '@nestjs/config'
       isGlobal: true
     }),
     DatabaseModule,
-    AuthModule
+    AuthModule,
   ],
 })
 export class AppModule {}

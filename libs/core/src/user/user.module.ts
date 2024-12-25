@@ -1,6 +1,6 @@
 // libs/core/src/user/user.module.ts
 import { Module } from '@nestjs/common';
-import { DatabaseModule } from '@libs/database';
+import { DatabaseModule } from '../../../database/src';
 import { UserRepository } from './repositories/user.repository';
 import { PasswordService } from './services/password.service';
 

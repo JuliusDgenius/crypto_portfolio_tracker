@@ -1,25 +1,11 @@
 {
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
+    "tsBuildInfoFile": "./dist/tsconfig.tsbuildinfo", 
+    "module": "commonjs",
+    "declaration": false,
     "removeComments": true,
-    "allowSyntheticDefaultImports": true,
-    "outDir": "./dist",
-    "incremental": true,
-    "strictNullChecks": true,
-    "noImplicitAny": true,
-    "strictBindCallApply": true,
-    "forceConsistentCasingInFileNames": true,
-    "noFallthroughCasesInSwitch": true,
-    "baseUrl": ".",
-    "paths": {
-      "@libs/*": ["libs/*/src"],
-      "@libs/common": ["libs/common/src"],
-    }
+    "incremental": true
   },
-  "include": ["apps/**/*", "libs/**/*"],
-  "references": [
-    {
-      "path": "libs/config/tsconfig.lib.json"
-    }
-  ],
-  "extends": "./tsconfig.base.json"
+  "exclude": ["node_modules", "dist"]
 }

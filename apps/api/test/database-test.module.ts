@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { PrismaService } from '@lib/database';
-import { DatabaseHealthIndicator } from '@lib/database';
+import { PrismaService } from '../../../libs/database/src';
+import { DatabaseHealthIndicator } from '../../../libs/database/src';
 
 @Module({
   providers: [
