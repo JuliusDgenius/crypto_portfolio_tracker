@@ -5,6 +5,14 @@
   "root": "apps/api",
   "sourceRoot": "apps/api/src",
   "compilerOptions": {
+    "assets": [
+      {
+        "include": "../../../libs/common/src/email/templates/**/*.hbs",
+        "outDir": "dist/apps/api/email/templates",
+        "watchAssets": true
+      }
+    ],
+    "watchAssets": true,
     "webpack": true,
     "tsConfigPath": "apps/api/tsconfig.json",
     "deleteOutDir": true

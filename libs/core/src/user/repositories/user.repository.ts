@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../database/src';
 import { IUser, JsonPreferences } from '../../../../core/src/user/interfaces';
 import { CreateUserDto } from '../dto/create-user.dto';
@@ -17,6 +17,17 @@ export class UserRepository {
   async create(dto: CreateUserDto): Promise<Partial<IUser> | null> { // Return IUser | null
     if (!dto.email || !dto.password) {
       throw new Error('Email and password are required.');
+    }
+
+    // Check if user exists already
+    const user = await this.prisma.user.findUnique({
+      where: {
+        email: dto.email,
+      },
+    });
+
+    if (user) {
+      throw new ConflictException("Email already exist");
     }
 
     const hashedPassword = await this.passwordService.hash(dto.password);
