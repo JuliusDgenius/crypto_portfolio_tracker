@@ -54,7 +54,6 @@ module.exports = (options, webpack) => {
         '@libs/config': path.join(rootDir, 'libs/config/src'),
         '@libs/crypto': path.join(rootDir, 'libs/crypto/src'),
         '@libs/portfolio': path.join(rootDir, 'libs/portfolio/src'),
-        '@libs/shared': path.join(rootDir, 'libs/shared/src'),
       },
     },
     

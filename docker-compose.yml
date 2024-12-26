@@ -1,11 +1,86 @@
 version: '3.8'
 services:
-  mongodb:
+  mongodb-primary:
     image: mongo:latest
+    command: mongod --replSet rs0 --bind_ip_all
     ports:
       - "27017:27017"
     volumes:
-      - mongodb_data:/data/db
+      - mongodb_data_primary:/data/db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    networks:
+      - crypto-network
+
+  mongodb-secondary:
+    image: mongo:latest
+    command: mongod --replSet rs0 --bind_ip_all
+    volumes:
+      - mongodb_data_secondary:/data/db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    networks:
+      - crypto-network
+    depends_on:
+      - mongodb-primary
+
+  mongodb-arbiter:
+    image: mongo:latest
+    command: mongod --replSet rs0 --bind_ip_all
+    volumes:
+      - mongodb_data_arbiter:/data/db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    networks:
+      - crypto-network
+    depends_on:
+      - mongodb-primary
+
+  mongo-init:
+    image: mongo:latest
+    restart: "no"
+    depends_on:
+      - mongodb-primary
+      - mongodb-secondary
+      - mongodb-arbiter
+    command: >
+      mongosh --host mongodb-primary:27017 -u admin -p password --eval '
+      rs.initiate({
+        _id: "rs0",
+        members: [
+          {_id: 0, host: "mongodb-primary:27017"},
+          {_id: 1, host: "mongodb-secondary:27017"},
+          {_id: 2, host: "mongodb-arbiter:27017", arbiterOnly: true}
+        ]
+      });'
+    networks:
+      - crypto-network
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    environment:
+      - DATABASE_URL=mongodb://admin:password@mongodb-primary:27017,mongodb-secondary:27017/crypto-portfolio?authSource=admin&replicaSet=rs0
+      - NODE_ENV=development
+    depends_on:
+      - mongo-init
+    networks:
+      - crypto-network
 
 volumes:
-  mongodb_data:
+  mongodb_data_primary:
+  mongodb_data_secondary:
+  mongodb_data_arbiter:
+
+networks:
+  crypto-network:
+    driver: bridge

@@ -1,7 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { EmailService } from '../../../common/src';
 import { UserRepository, PasswordService } from '../../../core/src';
 import { LoginDto } from '../dto';
 import { RegisterDto } from '../dto';
@@ -20,7 +19,6 @@ export class AuthService {
     private readonly passwordService: PasswordService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-    private readonly emailService: EmailService,
   ) {}
 
   /**
@@ -31,7 +29,6 @@ export class AuthService {
   async register(dto: RegisterDto): Promise<void> {
     const user = await this.userRepository.create(dto);
     const token = this.generateVerificationToken(user.id!);
-    await this.emailService.sendVerificationEmail(user.email!, token);
   }
 
   /**

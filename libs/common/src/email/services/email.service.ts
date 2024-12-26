@@ -2,7 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import { SentMessageInfo } from 'nodemailer';
 import { EmailTemplateService } from './email-template.service';
-import { EmailConfig } from '../../../common/src';
+import { EmailConfig, MockEmailConfig } from '../../email/config';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
@@ -11,6 +11,7 @@ export class EmailService implements OnModuleInit {
   private transporter: nodemailer.Transporter;
   private initialized = false;
   private emailConfig: EmailConfig;
+  private mockEmailConfig: MockEmailConfig;
 
   constructor(
     private readonly emailTemplateService: EmailTemplateService,
@@ -23,34 +24,57 @@ export class EmailService implements OnModuleInit {
 
     if (!emailEnabled) {
       this.logger.log('Email service is disabled. Using mock configuration.');
-      this.emailConfig = {
+      this.mockEmailConfig = {
         host: 'mock',
         port: 0,
         secure: false,
+        mock: true,
         auth: {
           user: 'mock',
           pass: 'mock',
         },
-        mock: true,
-        debug: true,
-        logger: true,
-        baseUrl: this.configService.get<string>('EMAIL_BASE_URL', 'http://localhost:3000'),
-        supportEmail: this.configService.get<string>('SUPPORT_EMAIL', 'support@mock.com'),
       };
       return;
     }
 
     // For enabled email service, validate all required configurations
     const requiredConfig: EmailConfig = {
-      host: this.configService.get<string>('SMTP_HOST'),
-      port: this.configService.get<number>('SMTP_PORT'),
-      secure: this.configService.get<boolean>('SMTP_SECURE', false),
-      auth: {
-        user: this.configService.get<string>('SMTP_USER'),
-        pass: this.configService.get<string>('SMTP_PASS'),
-      },
-      baseUrl: this.configService.get<string>('EMAIL_BASE_URL'),
-      supportEmail: this.configService.get<string>('SUPPORT_EMAIL'),
+      enabled: emailEnabled,
+      development: this.configService.get<boolean>('EMAIL_DEVELOPMENT', false),
+      logger: this.logger,
+  smtp: {
+    host: this.configService.get<string>('EMAIL_HOST', 'smtp.example.com'),
+    port: this.configService.get<number>('EMAIL_PORT', 587),
+    secure: this.configService.get<boolean>('EMAIL_SECURE', false),
+    auth: {
+      user: this.configService.get<string>('EMAIL_USER', 'username'),
+      pass: this.configService.get<string>('EMAIL_PASS', 'password'),
+    }
+  },
+  defaults: {
+    from: 'Crypto Portfolio Tracker',
+    replyTo: 'support@cryptoportfoliotracker.com'
+  },
+
+  queue: {
+    enabled: this.configService.get<boolean>('EMAIL_QUEUE_ENABLED', false),
+    prefix: 'email',
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: {
+        type: 'exponential',
+        delay: 1000,
+      }
+    }
+  },
+  rateLimiting: {
+    points: 5,
+    duration: 60
+  },
+  templates: {
+    directory: 'templates',
+    caching: true
+  }
     };
 
     // Validate all required fields are present
@@ -73,8 +97,6 @@ export class EmailService implements OnModuleInit {
     this.emailConfig = {
       ...requiredConfig,
       debug: this.configService.get<boolean>('EMAIL_DEBUG', false),
-      logger: this.configService.get<boolean>('EMAIL_LOGGER', false),
-      mock: false,
     };
   }
 
@@ -96,7 +118,7 @@ export class EmailService implements OnModuleInit {
     }
 
     try {
-      if (this.emailConfig.mock) {
+      if (this.mockEmailConfig.mock) {
         this.logger.log('Initializing mock email transport');
         this.transporter = nodemailer.createTransport({
           name: 'mock',
@@ -120,12 +142,12 @@ export class EmailService implements OnModuleInit {
       } else {
         // Initialize real SMTP transporter
         this.transporter = nodemailer.createTransport({
-          host: this.emailConfig.host,
-          port: this.emailConfig.port,
-          secure: this.emailConfig.secure,
-          auth: this.emailConfig.auth,
+          host: this.emailConfig.smtp.host,
+          port: this.emailConfig.smtp.port,
+          secure: this.emailConfig.smtp.secure,
+          auth: this.emailConfig.smtp.auth,
           debug: this.emailConfig.debug,
-          logger: this.emailConfig.logger,
+          this.logger.log("Email", mail.data);
         });
 
         // Verify the connection
@@ -137,9 +159,9 @@ export class EmailService implements OnModuleInit {
       this.logger.error('Failed to initialize email transporter', {
         error: error.message,
         config: {
-          host: this.emailConfig.host,
-          port: this.emailConfig.port,
-          secure: this.emailConfig.secure,
+          host: this.emailConfig.smtp.host,
+          port: this.emailConfig.smtp.port,
+          secure: this.emailConfig.smtp.secure,
         },
       });
       throw error;
@@ -154,7 +176,7 @@ export class EmailService implements OnModuleInit {
     try {
       const result = await this.transporter.sendMail({
         ...options,
-        from: options.from || this.emailConfig.auth.user,
+        from: options.from || this.emailConfig.smtp.auth.user,
       });
 
       this.logger.debug('Email sent successfully', {
