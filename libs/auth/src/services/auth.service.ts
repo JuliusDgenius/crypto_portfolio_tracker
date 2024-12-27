@@ -7,6 +7,7 @@ import { RegisterDto } from '../dto';
 import { ResetPasswordDto } from '../dto';
 import { VerifyEmailDto } from '../dto';
 import { Tokens, JwtPayload } from '../interfaces';
+import { IUser, TokenUser } from '../../../core/src/user/interfaces';
 
 /**
  * AuthService handles authentication-related operations such as registration,
@@ -26,9 +27,11 @@ export class AuthService {
    * @param dto - The registration data transfer object containing user details.
    * @returns A promise that resolves when the registration is complete.
    */
-  async register(dto: RegisterDto): Promise<void> {
+  async register(dto: RegisterDto): Promise<{user: Partial<IUser>, token: string}> {
     const user = await this.userRepository.create(dto);
     const token = this.generateVerificationToken(user.id!);
+    delete user.password
+    return { user, token }
   }
 
   /**
@@ -43,18 +46,43 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const isPasswordValid = await this.passwordService.compare(
+    console.log('Retrieved user:', {
+      id: user.id,
+      email: user.email,
+      verified: user.verified,
+      // Don't log sensitive data like password
+    });
+
+    try {
+      const isPasswordValid = await this.passwordService.compare(
       dto.password,
       user.password,
     );
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }
+  } catch(error) {
+    console.error('Error comparing password', error);
+    throw new Error('Authentication failed');
+  }
 
-    if (!user.verified) {
-      throw new UnauthorizedException('Please verify your email first');
+    // if (!user.verified) {
+    //   throw new UnauthorizedException('Please verify your email first');
+    // }
+    
+    if (!user.id) {
+      throw new Error('User ID is missing');
+    }
+    if (!user.email) {
+      throw new Error('User email is missing');
     }
 
+    console.log('Generating tokens for user:', {
+      id: user.id,
+      email: user.email,
+      verified: user.verified
+    });
+    
     return this.generateTokens(user);
   }
 
@@ -137,26 +165,33 @@ export class AuthService {
    * @param user - The user object for whom to generate tokens.
    * @returns An object containing the access and refresh tokens.
    */
-  private generateTokens(user: any): Tokens {
+  private generateTokens(user: IUser): Tokens {
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
-      name: user.name,
+      // Only include name if it exists in the user object
+      ...(user.name && {name: user.name}),
     };
 
-    const accessToken = this.jwtService.sign(payload, {
-      secret: this.configService.get('JWT_SECRET'),
-      expiresIn: '15m',
-    });
-
-    const refreshToken = this.jwtService.sign(payload, {
-      secret: this.configService.get('JWT_REFRESH_SECRET'),
-      expiresIn: '7d',
-    });
-
-    return {
-      accessToken,
-      refreshToken,
-    };
+    try {
+      const accessToken = this.jwtService.sign(payload, {
+        secret: this.configService.get('JWT_SECRET'),
+        expiresIn: '15m',
+      });
+  
+      const refreshToken = this.jwtService.sign(payload, {
+        secret: this.configService.get('JWT_REFRESH_SECRET'),
+        expiresIn: '7d',
+      });
+  
+      return {
+        accessToken,
+        refreshToken,
+      };
+    } catch(error) {
+      // Log the error for debugging purposes
+      console.error('Error generating tokens:', error);
+      throw new Error('Failed to generate authentication tokens');
+    }
   }
 }

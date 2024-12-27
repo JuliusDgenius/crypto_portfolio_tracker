@@ -14,62 +14,40 @@ export class UserRepository {
     private readonly passwordService: PasswordService,
   ) {}
 
-  async create(dto: CreateUserDto): Promise<Partial<IUser> | null> { // Return IUser | null
+  async create(dto: CreateUserDto): Promise<IUser> { // Return IUser
     if (!dto.email || !dto.password) {
       throw new Error('Email and password are required.');
     }
 
     // Check if user exists already
-    const user = await this.prisma.user.findUnique({
+    const existingUser = await this.prisma.user.findUnique({
       where: {
         email: dto.email,
       },
     });
 
-    if (user) {
+    if (existingUser) {
       throw new ConflictException("Email already exist");
     }
 
     const hashedPassword = await this.passwordService.hash(dto.password);
 
-    const defaultPreferences: Record<string, any> = { // Type the preferences
-      currency: 'USD',
-      theme: 'light',
-      notifications: {
-        email: true,
-        push: false,
-        priceAlerts: false,
-      },
-    };
-
-    // Define the shape of our create input data
-    type CreateUserData = {
-      email: string;
-      name: string | null;
-      verified: boolean;
-      twoFactorEnabled: boolean;
-      password: string;
-      preferences: Prisma.JsonValue;
-    };
-
     // Create our data object with the correct shape
-    const createData: CreateUserData = {
+    const createData: Prisma.UserCreateInput = {
       email: dto.email,
       name: dto.name || null,
       verified: false,
       twoFactorEnabled: false,
       password: hashedPassword,
-      preferences: defaultPreferences as Prisma.JsonValue,
-    };
-
-
-    const userData: Omit<Prisma.UserCreateInput, 'id'> = {
-      email: dto.email,
-      name: dto.name || null,
-      verified: false,
-      twoFactorEnabled: false,
-      password: hashedPassword,
-      preferences: defaultPreferences as Prisma.JsonValue, // Use typed preferences
+      preferences: {
+        currency: 'USD',
+        theme: 'light',
+        notifications: {
+          email: true,
+          push: false,
+          priceAlerts: false,
+        },
+      },
     };
 
     try {

@@ -30,6 +30,7 @@ import {
     @Post('login')
     @HttpCode(HttpStatus.OK)
     async login(@Body() loginDto: LoginDto): Promise<Tokens> {
+      console.log("You hit me with", loginDto);
       return this.authService.login(loginDto);
     }
   
