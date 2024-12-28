@@ -46,13 +46,6 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    console.log('Retrieved user:', {
-      id: user.id,
-      email: user.email,
-      verified: user.verified,
-      // Don't log sensitive data like password
-    });
-
     try {
       const isPasswordValid = await this.passwordService.compare(
       dto.password,
@@ -77,12 +70,6 @@ export class AuthService {
       throw new Error('User email is missing');
     }
 
-    console.log('Generating tokens for user:', {
-      id: user.id,
-      email: user.email,
-      verified: user.verified
-    });
-    
     return this.generateTokens(user);
   }
 

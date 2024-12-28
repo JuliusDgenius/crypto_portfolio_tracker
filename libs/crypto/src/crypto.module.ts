@@ -6,6 +6,7 @@ import { MarketService } from './services/market.service';
 import { WebSocketService } from './services/websocket.service';
 import { PriceUpdateJob } from './jobs/price-update.job';
 import { RedisModule } from '../../database/src';
+import { MarketController, PriceController } from './controllers';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { RedisModule } from '../../database/src';
       port: parseInt(process.env.REDIS_PORT) || 6379,
     }),
   ],
+  controllers: [MarketController, PriceController],
   providers: [PriceService, MarketService, WebSocketService, PriceUpdateJob],
   exports: [PriceService, MarketService, WebSocketService],
 })
