@@ -1,15 +1,22 @@
-// libs/database/src/redis/redis.service.ts
 import { Injectable, Inject, OnModuleDestroy } from '@nestjs/common';
 import { REDIS_OPTIONS } from './redis.constants';
-import { RedisOptions } from './interfaces/redis-options.interface';
-import Redis from 'ioredis';
+import { RedisOptions } from './interfaces';
+import { Redis, ChainableCommander } from 'ioredis';
 
 @Injectable()
 export class RedisService implements OnModuleDestroy {
   private readonly client: Redis;
 
-  constructor(@Inject(REDIS_OPTIONS) private readonly options: RedisOptions) {
-    this.client = new Redis(options);
+  constructor(
+    @Inject(REDIS_OPTIONS) private readonly options: RedisOptions
+  ) {
+    const optionsConfig: RedisOptions = {
+      host: '127.0.0.1',
+      port: 6379,
+      db: 1
+    };
+    
+    this.client = new Redis(optionsConfig);
   }
 
   async get(key: string): Promise<string | null> {
@@ -19,7 +26,7 @@ export class RedisService implements OnModuleDestroy {
   async set(
     key: string,
     value: string,
-    mode?: string,
+    mode?: 'EX',
     duration?: number,
   ): Promise<void> {
     if (mode && duration) {
@@ -29,7 +36,7 @@ export class RedisService implements OnModuleDestroy {
     }
   }
 
-  pipeline(): Redis.Pipeline {
+  pipeline(): ChainableCommander {
     return this.client.pipeline();
   }
 

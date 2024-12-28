@@ -15,7 +15,6 @@ export class MarketController {
   @ApiResponse({ status: 404, description: 'Cryptocurrency not found' })
   async getMarketData(@Param('symbol') symbol: string): Promise<IMarketData> {
     try {
-      console.log("I am hit with", symbol);
       return await this.marketService.getMarketData(symbol.toLowerCase());
     } catch (error) {
       if (error.response?.status === 404) {

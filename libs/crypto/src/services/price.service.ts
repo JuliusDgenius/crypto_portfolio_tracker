@@ -5,6 +5,9 @@ import { RedisService } from '../../../database/src';
 import { catchError, firstValueFrom } from 'rxjs';
 import { ICryptoPrice, IPriceResponse } from '../interfaces';
 
+/**
+ * Service for fetching and caching cryptocurrency prices.
+ */
 @Injectable()
 export class PriceService {
   private readonly logger = new Logger(PriceService.name);
@@ -12,6 +15,12 @@ export class PriceService {
   private readonly cachePrefix = 'crypto:price:';
   private readonly cacheDuration = 300; // 5 minutes
 
+  /**
+   * Creates an instance of PriceService.
+   * @param httpService - The HTTP service for making API requests.
+   * @param configService - The configuration service for accessing app settings.
+   * @param redisService - The Redis service for caching prices.
+   */
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
@@ -20,6 +29,11 @@ export class PriceService {
     this.baseUrl = 'https://api.coingecko.com/api/v3';
   }
 
+  /**
+   * Retrieves the prices for the given cryptocurrency symbols.
+   * @param symbols - An array of cryptocurrency symbols to fetch prices for.
+   * @returns A promise that resolves to an array of ICryptoPrice objects.
+   */
   async getPrices(symbols: string[]): Promise<ICryptoPrice[]> {
     const cachedData = await this.getCachedPrices(symbols);
     if (cachedData.length === symbols.length) {
@@ -61,6 +75,11 @@ export class PriceService {
     }
   }
 
+  /**
+   * Retrieves cached prices for the given symbols from Redis.
+   * @param symbols - An array of cryptocurrency symbols to fetch cached prices for.
+   * @returns A promise that resolves to an array of ICryptoPrice objects.
+   */
   private async getCachedPrices(symbols: string[]): Promise<ICryptoPrice[]> {
     const cachedPrices: ICryptoPrice[] = [];
     
@@ -74,6 +93,11 @@ export class PriceService {
     return cachedPrices;
   }
 
+  /**
+   * Caches the given prices in Redis.
+   * @param prices - An array of ICryptoPrice objects to cache.
+   * @returns A promise that resolves when the caching is complete.
+   */
   private async cachePrices(prices: ICryptoPrice[]): Promise<void> {
     const pipeline = this.redisService.pipeline();
     
