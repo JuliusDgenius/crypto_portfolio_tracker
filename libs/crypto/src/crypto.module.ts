@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule } from '../../config/src';
 import { PriceService } from './services/price.service';
 import { MarketService } from './services/market.service';
 import { WebSocketService } from './services/websocket.service';

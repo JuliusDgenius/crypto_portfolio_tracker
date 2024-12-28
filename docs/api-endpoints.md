@@ -1,7 +1,7 @@
 # API Endpoints Documentation
 
 ## Base URL
-`https://api.cryptofolio.com/v1`
+`http://localhost:3000/api`
 
 ## Authentication
 All protected routes require a Bearer token in the Authorization header:
@@ -155,6 +155,23 @@ Response: {
 ```
 
 ## Market Data Endpoints
+
+### Get /market/{symbol}
+Get market data for a specific cryptocurrency
+```typescript
+Query Parameters:
+- symbol: string // e.g bitcoin, ethereum
+
+Response: {
+  prices: {
+    [symbol: string]: {
+      price: number,
+      change24h: number,
+      volume24h: number
+    }
+  }
+}
+```
 
 ### GET /market/prices
 Get current cryptocurrency prices.

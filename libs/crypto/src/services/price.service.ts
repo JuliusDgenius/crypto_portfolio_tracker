@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
-import { ConfigService } from '@nestjs/config';
+import { ConfigService } from '../../../config/src';
 import { RedisService } from '../../../database/src';
 import { catchError, firstValueFrom } from 'rxjs';
 import { ICryptoPrice, IPriceResponse } from '../interfaces';
@@ -26,7 +26,7 @@ export class PriceService {
     private readonly configService: ConfigService,
     private readonly redisService: RedisService,
   ) {
-    this.baseUrl = 'https://api.coingecko.com/api/v3';
+    this.baseUrl = this.configService.get('COINGECKO_API_BASE_URL');
   }
 
   /**
