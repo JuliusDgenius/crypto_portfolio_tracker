@@ -3,7 +3,7 @@ import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '../../../config/src';
 import { RedisService } from '../../../database/src';
 import { catchError, firstValueFrom } from 'rxjs';
-import { ICryptoPrice, IPriceResponse } from '../interfaces';
+import { ICryptoPrice, IHistoricalPrice, IMarketStats, IPriceAlert, IPriceResponse, ITechnicalIndicator } from '../interfaces';
 
 /**
  * Service for fetching and caching cryptocurrency prices.
@@ -12,8 +12,29 @@ import { ICryptoPrice, IPriceResponse } from '../interfaces';
 export class PriceService {
   private readonly logger = new Logger(PriceService.name);
   private readonly baseUrl: string;
+  private readonly apiKey: string;
   private readonly cachePrefix = 'crypto:price:';
   private readonly cacheDuration = 300; // 5 minutes
+
+  // Cache configuration for different data types
+  private readonly cacheConfig = {
+    currentPrice: {
+      prefix: 'crypto:price:current:',
+      duration: 300 // 5 minutes
+    },
+    historicalPrice: {
+      prefix: 'crypto:price:history:',
+      duration: 3600 // 1 hour
+    },
+    marketStats: {
+      prefix: 'crypto:stats:',
+      duration: 900 // 15 minutes
+    },
+    technicalIndicators: {
+      prefix: 'crypto:indicators:',
+      duration: 600 // 10 minutes
+    }
+  };
 
   /**
    * Creates an instance of PriceService.
@@ -27,6 +48,7 @@ export class PriceService {
     private readonly redisService: RedisService,
   ) {
     this.baseUrl = this.configService.get('COINGECKO_API_BASE_URL');
+    this.apiKey = this.configService.get('COINGECKO_API_KEY');
   }
 
   /**
@@ -51,6 +73,9 @@ export class PriceService {
             ids: missingSymbols.join(','),
             vs_currencies: 'usd',
             include_24hr_change: true,
+          },
+          headers: {
+            'x-cg-api-key': this.apiKey
           },
         }).pipe(
           catchError(error => {
@@ -111,5 +136,309 @@ export class PriceService {
     });
     
     await pipeline.exec();
+  }
+
+  /**
+ * Retrieves historical price data for a cryptocurrency.
+  * @param symbol - Cryptocurrency ID (e.g., 'bitcoin')
+  * @param range - Time range ('1d', '7d', '30d', '90d', '1y')
+  * @param interval - Data interval ('hourly', 'daily')
+  */
+  async getHistoricalPrices(
+    symbol: string,
+    range: string,
+    interval: string
+  ): Promise<IHistoricalPrice[]> {
+    const cacheKey = `${this.cacheConfig.historicalPrice.prefix}${symbol}:${range}:${interval}`;
+    
+    // Try to get data from cache first
+    const cachedData = await this.redisService.get(cacheKey);
+    if (cachedData) {
+      const parsedData = JSON.parse(cachedData);
+      
+      // Check if cached data is still valid for the requested range
+      if (this.isHistoricalDataValid(parsedData, range)) {
+        return parsedData;
+      }
+    }
+
+    try {
+      // Convert interval to CoinGecko interval
+      const geckoInterval = this.getGeckoInterval(range);
+
+      // Fetch data from API
+      const { data } = await firstValueFrom(
+        this.httpService.get(`${this.baseUrl}/coins/${symbol}/market_chart`, {
+          params: {
+            vs_currency: 'usd',
+            days: this.getNumberOfDays(range),
+            interval: geckoInterval
+          }
+        }).pipe(
+          catchError(error => {
+            if (error.response?.status === 429) {
+              this.logger.error('Rate limit exceeded for CoinGecko API');
+              throw new Error('Rate limit exceeded. Please try again later.');
+            }
+            this.logger.error(`Failed to fetch historical prices: ${error.message}`);
+            throw error;
+          })
+        )
+      );
+
+      const formattedData = this.formatHistoricalData(data);
+      
+      // Cache the data with sliding window strategy
+      await this.redisService.set(
+        cacheKey,
+        JSON.stringify(formattedData),
+        'EX',
+        this.cacheConfig.historicalPrice.duration
+      );
+
+      return formattedData;
+    } catch (error) {
+      this.logger.error(`Error fetching historical prices: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Creates and manages price alerts for users.
+   * Implements a pub/sub pattern for real-time alert notifications.
+   */
+  async createPriceAlert(
+    symbol: string,
+    alertData: { threshold: number; direction: 'above' | 'below' }
+  ): Promise<IPriceAlert> {
+    const alert = {
+      id: crypto.randomUUID(),
+      symbol,
+      ...alertData,
+      createdAt: new Date(),
+      triggered: false
+    };
+
+    // Store alert in Redis with no expiration
+    await this.redisService.set(
+      `crypto:alerts:${alert.id}`,
+      JSON.stringify(alert)
+    );
+
+    // Add to sorted set for efficient price checking
+    await this.redisService.zadd(
+      `crypto:alerts:${symbol}:${alertData.direction}`,
+      alertData.threshold,
+      alert.id
+    );
+
+    return alert;
+  }
+
+  /**
+   * Retrieves comprehensive market statistics for a cryptocurrency.
+   * Implements a tiered caching strategy with different expiration times
+   * for different types of data.
+   */
+  async getMarketStats(symbol: string): Promise<IMarketStats> {
+    const cacheKey = `${this.cacheConfig.marketStats.prefix}${symbol}`;
+    
+    const cachedStats = await this.redisService.get(cacheKey);
+    if (cachedStats) {
+      return JSON.parse(cachedStats);
+    }
+
+    try {
+      const { data } = await firstValueFrom(
+        this.httpService.get(`${this.baseUrl}/coins/${symbol}`, {
+          params: {
+            localization: false,
+            tickers: false,
+            market_data: true,
+            community_data: false,
+            developer_data: false
+          }
+        }).pipe(
+          catchError(error => {
+            this.logger.error(`Failed to fetch market stats: ${error.message}`);
+            throw error;
+          })
+        )
+      );
+
+      const stats = this.formatMarketStats(data);
+      
+      // Cache with appropriate expiration
+      await this.redisService.set(
+        cacheKey,
+        JSON.stringify(stats),
+        'EX',
+        this.cacheConfig.marketStats.duration
+      );
+
+      return stats;
+    } catch (error) {
+      this.logger.error(`Error fetching market stats: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Compares price performance of multiple cryptocurrencies.
+   * Uses batch processing for efficient data retrieval.
+   */
+  async comparePrices(
+    symbols: string[],
+    timeframe: string
+  ): Promise<Record<string, IHistoricalPrice[]>> {
+    const comparison = {};
+    
+    // Use Promise.all for parallel processing
+    await Promise.all(
+      symbols.map(async (symbol) => {
+        comparison[symbol] = await this.getHistoricalPrices(
+          symbol,
+          timeframe,
+          this.getOptimalInterval(timeframe)
+        );
+      })
+    );
+
+    return comparison;
+  }
+
+  /**
+   * Retrieves technical indicators for price analysis.
+   * Implements calculation caching to avoid repeated computations.
+   */
+  async getPriceIndicators(
+    symbol: string,
+    indicators: string[]
+  ): Promise<Record<string, ITechnicalIndicator>> {
+    const cacheKey = `${this.cacheConfig.technicalIndicators.prefix}${symbol}`;
+    
+    const cachedIndicators = await this.redisService.get(cacheKey);
+    if (cachedIndicators) {
+      const parsed = JSON.parse(cachedIndicators);
+      // Check if we have all requested indicators
+      if (indicators.every(ind => ind in parsed)) {
+        return parsed;
+      }
+    }
+
+    try {
+      // Fetch required historical data for calculations
+      const historicalData = await this.getHistoricalPrices(symbol, '30d', '1h');
+      
+      // Calculate requested indicators
+      const result = {};
+      for (const indicator of indicators) {
+        result[indicator] = await this.calculateIndicator(
+          indicator,
+          historicalData
+        );
+      }
+
+      // Cache the results
+      await this.redisService.set(
+        cacheKey,
+        JSON.stringify(result),
+        'EX',
+        this.cacheConfig.technicalIndicators.duration
+      );
+
+      return result;
+    } catch (error) {
+      this.logger.error(`Error calculating indicators: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // Private helper methods
+
+  private getNumberOfDays(range: string): number {
+    const rangeMappings = {
+      '1d': 1,
+      '7d': 7,
+      '30d': 30,
+      '90d': 90,
+      '1y': 365
+    };
+    return rangeMappings[range] || 30;
+  }
+
+  private getOptimalInterval(timeframe: string): string {
+    const intervalMappings = {
+      '24h': '1h',
+      '7d': '4h',
+      '30d': '1d',
+      '90d': '1d',
+      '1y': '1d'
+    };
+    return intervalMappings[timeframe] || '1d';
+  }
+
+  private isHistoricalDataValid(
+    data: IHistoricalPrice[],
+    range: string
+  ): boolean {
+    if (!data.length) return false;
+    
+    const lastDataPoint = new Date(data[data.length - 1].timestamp);
+    const requiredAge = this.getNumberOfDays(range);
+    
+    return (
+      Date.now() - lastDataPoint.getTime() <
+      requiredAge * 24 * 60 * 60 * 1000
+    );
+  }
+
+  private async calculateIndicator(
+    indicator: string,
+    historicalData: IHistoricalPrice[]
+  ): Promise<ITechnicalIndicator> {
+    // Implementation of technical indicator calculations
+    // This would include RSI, moving averages, etc.
+    // Returns calculated indicator values
+    return null; // Placeholder
+  }
+
+  private formatHistoricalData(data: any): IHistoricalPrice[] {
+    return data.prices.map(([timestamp, price]) => ({
+      timestamp: new Date(timestamp).toISOString(),
+      price,
+    }));
+  }
+
+  private getGeckoInterval(range: string): string {
+    // For ranges <= 90 days, we can use hourly data
+    const days = this.getNumberOfDays(range);
+    if (days <= 1) return 'minutely';
+    if (days <= 90) return 'hourly';
+    return 'daily';
+  }
+
+  private formatMarketStats(data: any): IMarketStats {
+    return {
+      marketCap: data.market_data.market_cap.usd,
+      volume24h: data.market_data.total_volume.usd,
+      circulatingSupply: data.market_data.circulating_supply,
+      totalSupply: data.market_data.total_supply,
+      allTimeHigh: {
+        price: data.market_data.ath.usd,
+        date: data.market_data.ath_date.usd,
+      },
+      priceChange: {
+        '1h': data.market_data.price_change_percentage_1h_in_currency.usd,
+        '24h': data.market_data.price_change_percentage_24h_in_currency.usd,
+        '7d': data.market_data.price_change_percentage_7d_in_currency.usd,
+        '30d': data.market_data.price_change_percentage_30d_in_currency.usd,
+      },
+      marketCapRank: data.market_cap_rank,
+      allTimeLow: {
+        price: data.market_data.atl.usd,
+        date: data.market_data.atl_date.usd,
+      }
+    };
   }
 }

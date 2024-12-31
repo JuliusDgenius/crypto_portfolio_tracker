@@ -1,4 +1,4 @@
-juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "node_modules"
+juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I 'node_modules'
 .
 ├── apps
 │   ├── api
@@ -52,12 +52,16 @@ juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "n
 ├── dist
 │   └── apps
 │       └── api
+│           ├── main.e37bb21d544d192c4606.hot-update.js
+│           ├── main.e37bb21d544d192c4606.hot-update.json
 │           └── main.js
 ├── docker-compose.yml
+├── Dockerfile.dev
 ├── docs
 │   ├── api-endpoints.md
 │   ├── data-models.md
 │   ├── frontend-architecture.md
+│   ├── implementation-guide.md
 │   ├── implementation-plan.md
 │   └── project-file-structure.md
 ├── jest.config.ts
@@ -102,15 +106,6 @@ juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "n
 │   │   │   │   ├── public.decorator.ts
 │   │   │   │   ├── roles.decorator.ts
 │   │   │   │   └── user.decorator.ts
-│   │   │   ├── email
-│   │   │   │   ├── email.module.ts
-│   │   │   │   ├── email.service.ts
-│   │   │   │   ├── email-template.service.ts
-│   │   │   │   ├── index.ts
-│   │   │   │   └── templates
-│   │   │   │       ├── password-reset.hbs
-│   │   │   │       ├── verification.hbs
-│   │   │   │       └── welcome.hbs
 │   │   │   ├── exceptions
 │   │   │   │   ├── base.exception.ts
 │   │   │   │   └── index.ts
@@ -129,7 +124,6 @@ juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "n
 │   │   │   │   ├── security
 │   │   │   │   │   ├── throttler.guard.ts
 │   │   │   │   │   └── websocket.guard.ts
-│   │   │   │   ├── __tests__
 │   │   │   │   └── validation-guards
 │   │   │   │       ├── index.ts
 │   │   │   │       └── validate-user.guard.ts
@@ -138,10 +132,12 @@ juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "n
 │   │   │   │   ├── index.ts
 │   │   │   │   ├── logging.interceptor.ts
 │   │   │   │   └── transform.interceptor.ts
+│   │   │   ├── interfaces
+│   │   │   │   ├── email-config.interface.ts
+│   │   │   │   └── index.ts
 │   │   │   ├── logging
 │   │   │   │   ├── constants.ts
 │   │   │   │   ├── index.ts
-│   │   │   │   ├── integration
 │   │   │   │   ├── interfaces
 │   │   │   │   │   └── logger.interface.ts
 │   │   │   │   ├── logger.service.ts
@@ -159,7 +155,8 @@ juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "n
 │   │   │   ├── config.module.ts
 │   │   │   ├── config.service.ts
 │   │   │   ├── env.validation.ts
-│   │   │   └── index.ts
+│   │   │   ├── index.ts
+│   │   │   └── swagger.config.ts
 │   │   └── tsconfig.json
 │   ├── core
 │   │   ├── src
@@ -178,9 +175,15 @@ juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "n
 │   │   │   │   └── user.entity.ts
 │   │   │   ├── index.ts
 │   │   │   ├── interfaces
+│   │   │   │   ├── base.interface.d.ts
+│   │   │   │   ├── base.interface.js
+│   │   │   │   ├── base.interface.js.map
 │   │   │   │   ├── base.interface.ts
 │   │   │   │   ├── crypto.interface.ts
 │   │   │   │   ├── index.ts
+│   │   │   │   ├── repository.interface.d.ts
+│   │   │   │   ├── repository.interface.js
+│   │   │   │   ├── repository.interface.js.map
 │   │   │   │   ├── repository.interface.ts
 │   │   │   │   └── response.interface.ts
 │   │   │   ├── types
@@ -194,6 +197,7 @@ juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "n
 │   │   │       │   └── update-user.dto.ts
 │   │   │       ├── interfaces
 │   │   │       │   ├── index.ts
+│   │   │       │   ├── token.interface.ts
 │   │   │       │   └── user.interface.ts
 │   │   │       ├── repositories
 │   │   │       │   ├── index.ts
@@ -204,6 +208,30 @@ juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "n
 │   │   │       └── user.module.ts
 │   │   └── tsconfig.json
 │   ├── crypto
+│   │   ├── src
+│   │   │   ├── controllers
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── market.controller.ts
+│   │   │   │   ├── price.controller.ts
+│   │   │   │   └── websocket.controller.ts
+│   │   │   ├── crypto.module.ts
+│   │   │   ├── dto
+│   │   │   │   ├── get-prices.dto.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── index.ts
+│   │   │   ├── interfaces
+│   │   │   │   ├── crypto-price.interface.ts
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── market-data.interface.ts
+│   │   │   │   ├── market.interface.ts
+│   │   │   │   └── price-response.interface.ts
+│   │   │   ├── jobs
+│   │   │   │   └── price-update.job.ts
+│   │   │   └── services
+│   │   │       ├── index.ts
+│   │   │       ├── market.service.ts
+│   │   │       ├── price.service.ts
+│   │   │       └── websocket.service.ts
 │   │   └── tsconfig.json
 │   ├── database
 │   │   ├── src
@@ -226,7 +254,15 @@ juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "n
 │   │   │   │   │   ├── user.interface.ts
 │   │   │   │   │   └── watchlist.interface.ts
 │   │   │   │   └── retry-options.interface.ts
-│   │   │   └── prisma.service.ts
+│   │   │   ├── prisma.service.ts
+│   │   │   └── redis
+│   │   │       ├── index.ts
+│   │   │       ├── interfaces
+│   │   │       │   ├── index.ts
+│   │   │       │   └── redis-options.interface.ts
+│   │   │       ├── redis.constants.ts
+│   │   │       ├── redis.module.ts
+│   │   │       └── redis.service.ts
 │   │   └── tsconfig.json
 │   └── portfolio
 │       └── tsconfig.json
@@ -240,3 +276,5 @@ juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "n
 ├── tsconfig.build.json
 ├── tsconfig.json
 └── webpack.config.js
+
+75 directories, 201 files

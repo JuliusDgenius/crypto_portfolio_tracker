@@ -32,7 +32,7 @@ model User {
 }
 
 model Portfolio {
-  id              String           @id @map("_id") @db.ObjectId
+  id              String           @id @default(auto()) @map("_id") @db.ObjectId
   userId          String           @db.ObjectId
   name            String
   description     String?
@@ -48,7 +48,7 @@ model Portfolio {
 }
 
 model Transaction {
-  id              String           @id @map("_id") @db.ObjectId
+  id              String           @id @default(auto()) @map("_id") @db.ObjectId
   portfolioId     String           @db.ObjectId
   type            TransactionType
   cryptocurrency  String
@@ -65,7 +65,7 @@ model Transaction {
 }
 
 model Asset {
-  id              String           @id @map("_id") @db.ObjectId
+  id              String           @id @default(auto()) @map("_id") @db.ObjectId
   portfolioId     String           @db.ObjectId
   symbol          String
   name            String
@@ -82,7 +82,7 @@ model Asset {
 }
 
 model Watchlist {
-  id              String           @id @map("_id") @db.ObjectId
+  id              String           @id @default(auto()) @map("_id") @db.ObjectId
   userId          String           @db.ObjectId
   name            String
   description     String?
@@ -93,7 +93,7 @@ model Watchlist {
 }
 
 model ExchangeAccount {
-  id              String           @id @map("_id") @db.ObjectId
+  id              String           @id @default(auto()) @map("_id") @db.ObjectId
   userId          String           @db.ObjectId
   exchange        String
   name            String
@@ -107,7 +107,7 @@ model ExchangeAccount {
 }
 
 model Alert {
-  id              String           @id @map("_id") @db.ObjectId
+  id              String           @id @default(auto()) @map("_id") @db.ObjectId
   userId          String           @db.ObjectId
   type            AlertType
   status          AlertStatus
@@ -120,7 +120,7 @@ model Alert {
 }
 
 model HistoricalData {
-  id              String           @id @map("_id") @db.ObjectId
+  id              String           @id @default(auto()) @map("_id") @db.ObjectId
   portfolioId     String           @db.ObjectId
   date            DateTime
   totalValue      Float

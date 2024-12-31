@@ -15,7 +15,7 @@ export class RedisService implements OnModuleDestroy {
       port: 6379,
       db: 1
     };
-    
+
     this.client = new Redis(optionsConfig);
   }
 
@@ -38,6 +38,16 @@ export class RedisService implements OnModuleDestroy {
 
   pipeline(): ChainableCommander {
     return this.client.pipeline();
+  }
+
+
+  async zadd(key, score, number) {
+    try {
+      const result = await this.client.zadd(key, score, number);
+    } catch(error) {
+      console.error(`Could not add ${error}`);
+      throw error.stack;
+    }
   }
 
   async onModuleDestroy() {

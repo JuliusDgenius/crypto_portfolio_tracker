@@ -19,3 +19,6 @@ export * from './guards';
 // interfaces
 export * from './interfaces';
 
+// decorators
+export * from './decorators';
+

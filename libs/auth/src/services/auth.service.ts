@@ -8,6 +8,7 @@ import { ResetPasswordDto } from '../dto';
 import { VerifyEmailDto } from '../dto';
 import { Tokens, JwtPayload } from '../interfaces';
 import { IUser, TokenUser } from '../../../core/src/user/interfaces';
+import { JwtSecretType } from '../strategies';
 
 /**
  * AuthService handles authentication-related operations such as registration,
@@ -27,11 +28,15 @@ export class AuthService {
    * @param dto - The registration data transfer object containing user details.
    * @returns A promise that resolves when the registration is complete.
    */
-  async register(dto: RegisterDto): Promise<{user: Partial<IUser>, token: string}> {
+  async register(dto: RegisterDto): Promise<{user: Partial<IUser>}> {
     const user = await this.userRepository.create(dto);
-    const token = this.generateVerificationToken(user.id!);
+    const verificationToken = this.generateVerificationToken(user.id!);
+
+    // TODO: send email
+    // await this.emailService.sendVerificationEmail(user.email, verificationToken);
+
     delete user.password
-    return { user, token }
+    return {  user }
   }
 
   /**
@@ -141,7 +146,7 @@ export class AuthService {
     return this.jwtService.sign(
       { sub: userId },
       {
-        secret: this.configService.get('JWT_VERIFICATION_SECRET'),
+        secret: this.configService.get(JwtSecretType.VERIFICATION),
         expiresIn: '1d',
       },
     );
@@ -162,12 +167,12 @@ export class AuthService {
 
     try {
       const accessToken = this.jwtService.sign(payload, {
-        secret: this.configService.get('JWT_SECRET'),
+        secret: this.configService.get(JwtSecretType.ACCESS),
         expiresIn: '15m',
       });
   
       const refreshToken = this.jwtService.sign(payload, {
-        secret: this.configService.get('JWT_REFRESH_SECRET'),
+        secret: this.configService.get(JwtSecretType.REFRESH),
         expiresIn: '7d',
       });
   
