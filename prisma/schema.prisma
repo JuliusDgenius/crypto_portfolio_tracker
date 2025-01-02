@@ -53,7 +53,7 @@ model Transaction {
   type            TransactionType
   cryptocurrency  String
   amount          Float
-  price           Float
+  pricePerUnit    Float
   fee             Float?
   exchange        String?
   wallet          String?
@@ -62,6 +62,8 @@ model Transaction {
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   portfolio       Portfolio        @relation(fields: [portfolioId], references: [id])
+  assetId         String           @db.ObjectId
+  asset           Asset            @relation(fields: [assetId], references: [id])
 }
 
 model Asset {
@@ -69,7 +71,7 @@ model Asset {
   portfolioId     String           @db.ObjectId
   symbol          String
   name            String
-  amount          Float
+  quantity        Float
   averageBuyPrice Float
   currentPrice    Float
   value           Float
@@ -77,6 +79,8 @@ model Asset {
   allocation      Float             // Percentage of portfolio
   lastUpdated     DateTime
   portfolio       Portfolio         @relation(fields: [portfolioId], references: [id])
+  transactions    Transaction[]
+
 
   @@index([portfolioId, symbol])
 }

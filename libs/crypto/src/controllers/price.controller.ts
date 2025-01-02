@@ -5,22 +5,27 @@ import {
   HttpException,
   HttpStatus,
   Param, Body,
-  Post
+  Post,
+  UseGuards
 } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiQuery,
-  ApiParam
+  ApiParam,
+  ApiSecurity
 } from '@nestjs/swagger';
 import { PriceService } from '../services';
 import { ICryptoPrice } from '../interfaces';
 import { GetPricesDto } from '../dto/get-prices.dto';
+import { JwtAuthGuard } from '../../../common/src';
 
 /**
  * Controller for handling cryptocurrency price requests.
  */
+@UseGuards(JwtAuthGuard)
+@ApiSecurity('JWT-auth')
 @ApiTags('Cryptocurrency Prices')
 @Controller('prices')
 export class PriceController {
@@ -78,24 +83,6 @@ export class PriceController {
     @Query('interval') interval: string
   ) {
     return this.priceService.getHistoricalPrices(symbol, range, interval);
-  }
-
-  /**
-   * Retrieves price alerts for a specific price threshold
-   * @param symbol - The cryptocurrency symbol
-   * @param threshold - Price threshold for the alert
-   * @param direction - Alert direction (above/below)
-   */
-  @Post(':symbol/alerts')
-  @ApiOperation({ summary: 'Create a price alert' })
-  async createPriceAlert(
-    @Param('symbol') symbol: string,
-    @Body() alertData: {
-      threshold: number;
-      direction: 'above' | 'below';
-    }
-  ) {
-    return this.priceService.createPriceAlert(symbol, alertData);
   }
 
   /**

@@ -8,14 +8,15 @@ import {
   Param,
   UseGuards,
   Query,
-  ParseUUIDPipe,
   HttpStatus,
   HttpCode,
+  Patch,
+  NotFoundException,
 } from '@nestjs/common';
 import { CurrentUser, JwtAuthGuard } from '../../../auth/src';
 import { PortfolioService } from '../services/portfolio.service';
 import { AnalyticsService } from '../services/analytics.service';
-import { CreatePortfolioDto, UpdatePortfolioDto } from '../dto';
+import { AddAssetDto, CreatePortfolioDto, UpdatePortfolioDto } from '../dto';
 import {
   ApiTags,
   ApiOperation,
@@ -37,7 +38,7 @@ export class PortfolioController {
     private readonly analyticsService: AnalyticsService,
   ) {}
 
-  @Post()
+  @Post('create')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ 
     summary: 'Create a new portfolio',
@@ -52,15 +53,15 @@ export class PortfolioController {
     `
   })
   @ApiSecurity('JWT-auth')
-  // @ApiHeader({
-  //   name: 'Authorization',
-  //   description: 'JWT Bearer token',
-  //   required: true,
-  //   schema: {
-  //     type: 'string',
-  //     example: 'Bearer eyJhbGciOiJIUzI1NiIs...',
-  //   }
-  // })
+  @ApiHeader({
+    name: 'Authorization',
+    description: 'JWT Bearer token',
+    required: true,
+    schema: {
+      type: 'string',
+      example: 'Bearer eyJhbGciOiJIUzI1NiIs...',
+    }
+  })
   @ApiBody({
     type: CreatePortfolioDto,
     description: 'Portfolio creation parameters',
@@ -156,16 +157,313 @@ export class PortfolioController {
   })
   async createPortfolio(
     @Body() createPortfolioDto: CreatePortfolioDto,
-    @CurrentUser('sub') userId: string, // userId is extracted from JWT token
+    @CurrentUser('id') userId: string, // userId is extracted from JWT token
   ) {
-    console.log("Controller hit with DTO:", createPortfolioDto);
-    console.log("User ID from token:", userId);
-
     const portfolio = await this.portfolioService.createPortfolio(
       userId,
       createPortfolioDto,
     );
     
     return { portfolio };
+  }
+
+  @Post(':portfolioId/assets')
+@HttpCode(HttpStatus.CREATED)
+@ApiOperation({ 
+  summary: 'Add a new asset to portfolio',
+  description: `
+    Adds a new cryptocurrency asset to track in the specified portfolio.
+    The asset is initialized with default values:
+    - Zero quantity
+    - Zero current price
+    - Zero average buy price
+    - Zero value
+    - Zero allocation
+    These values will be updated when transactions are recorded.
+    An asset must be added to a portfolio before transactions can be recorded for it.
+  `
+})
+@ApiSecurity('JWT-auth')
+@ApiParam({
+  name: 'portfolioId',
+  description: 'ID of the portfolio to add the asset to',
+  type: 'string',
+  format: 'ObjectId'
+})
+@ApiBody({
+  type: AddAssetDto,
+  description: 'Asset creation parameters',
+  examples: {
+    minimal: {
+      summary: 'Basic Asset',
+      description: 'Creates an asset with required fields',
+      value: {
+        symbol: 'BTC',
+        name: 'Bitcoin'
+      }
+    },
+    complete: {
+      summary: 'Complete Asset',
+      description: 'Creates an asset with all available fields',
+      value: {
+        symbol: 'BTC',
+        name: 'Bitcoin',
+        quantity: 0,
+        averageBuyPrice: 0,
+        currentPrice: 0,
+        value: 0,
+        allocation: 0
+      }
+    }
+  }
+})
+@ApiResponse({
+  status: HttpStatus.CREATED,
+  description: 'Asset successfully added to portfolio',
+  schema: {
+    type: 'object',
+    properties: {
+      asset: {
+        type: 'object',
+        properties: {
+          id: { 
+            type: 'string', 
+            format: 'uuid',
+            description: 'Unique identifier for the asset'
+          },
+          symbol: { 
+            type: 'string',
+            description: 'Cryptocurrency symbol (e.g., BTC)'
+          },
+          name: { 
+            type: 'string',
+            description: 'Full name of the cryptocurrency'
+          },
+          quantity: { 
+            type: 'number',
+            description: 'Current quantity held',
+            default: 0
+          },
+          averageBuyPrice: {
+            type: 'number',
+            description: 'Average purchase price per unit',
+            default: 0
+          },
+          currentPrice: {
+            type: 'number',
+            description: 'Current market price per unit',
+            default: 0
+          },
+          value: {
+            type: 'number',
+            description: 'Total value of holdings (quantity * currentPrice)',
+            default: 0
+          },
+          allocation: {
+            type: 'number',
+            description: 'Percentage allocation in portfolio',
+            default: 0
+          },
+          portfolioId: {
+            type: 'string',
+            format: 'uuid',
+            description: 'ID of the portfolio this asset belongs to'
+          },
+          lastUpdated: {
+            type: 'string',
+            format: 'date-time'
+          }
+        }
+      }
+    }
+  }
+})
+@ApiResponse({
+  status: HttpStatus.CONFLICT,
+  description: 'Asset already exists in portfolio',
+  schema: {
+    type: 'object',
+    properties: {
+      statusCode: { type: 'number', example: 409 },
+      message: { type: 'string', example: 'Asset already exists in portfolio' },
+      error: { type: 'string', example: 'Conflict' }
+    }
+  }
+})
+@ApiResponse({
+  status: HttpStatus.NOT_FOUND,
+  description: 'Portfolio not found',
+  schema: {
+    type: 'object',
+    properties: {
+      statusCode: { type: 'number', example: 404 },
+      message: { type: 'string', example: 'Portfolio not found' },
+      error: { type: 'string', example: 'Not Found' }
+    }
+  }
+})
+async addAssetToPortfolio(
+  @CurrentUser('id') userId: string,
+  @Param('portfolioId') portfolioId: string,
+  @Body() addAssetDto: AddAssetDto
+) {
+  const asset = await this.portfolioService.addAssetToPortfolio(
+    userId,
+    portfolioId,
+    addAssetDto
+  );
+  return { asset };
+}
+
+  @Get('portfolios')
+  @ApiOperation({
+    summary: 'Get all portfolios for user',
+    description: 'Retrieves all portfolios belonging to the authenticated user, including their assets'
+  })
+  @ApiSecurity('JWT-auth')
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'List of user portfolios retrieved successfully'
+  })
+  async getPortfolios(@CurrentUser('id') userId: string) {
+    const portfolios = await this.portfolioService.getPortfolios(userId);
+    return { portfolios };
+  }
+
+  @Get(':portfolioId')
+  @ApiOperation({
+    summary: 'Get portfolio by ID',
+    description: 'Retrieves a specific portfolio by its ID for the authenticated user'
+  })
+  @ApiParam({
+    name: 'portfolioId',
+    description: 'ID of the portfolio to retrieve',
+    type: 'string'
+  })
+  @ApiSecurity('JWT-auth')
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Portfolio retrieved successfully'
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Portfolio not found'
+  })
+  async getPortfolioById(
+    @CurrentUser('id') userId: string,
+    @Param('portfolioId') portfolioId: string
+  ) {
+    const portfolio = await this.portfolioService.getPortfoliosById(userId, portfolioId);
+    return { portfolio };
+  }
+
+  @Get(':portfolioId/metrics')
+  @ApiOperation({
+    summary: 'Get portfolio metrics',
+    description: 'Retrieves detailed metrics for a specific portfolio including profit/loss, asset allocation, and performance'
+  })
+  @ApiParam({
+    name: 'portfolioId',
+    description: 'ObjectId of the portfolio to get metrics for',
+    type: 'string',
+  })
+  @ApiSecurity('JWT-auth')
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Portfolio metrics retrieved successfully'
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Portfolio not found'
+  })
+  async getPortfolioMetrics(
+    @Param('portfolioId') portfolioId: string
+  ) {
+    const metrics = await this.portfolioService.getPortfolioMetrics(portfolioId);
+    return { metrics };
+  }
+
+  @Patch(':portfolioId')
+  @ApiOperation({
+    summary: 'Update portfolio',
+    description: 'Updates the name and/or description of an existing portfolio'
+  })
+  @ApiParam({
+    name: 'portfolioId',
+    description: 'ObjectId of the portfolio to update',
+    type: 'string',
+  })
+  @ApiBody({
+    type: UpdatePortfolioDto,
+    description: 'Portfolio update parameters',
+    examples: {
+      name: {
+        summary: 'Update Name',
+        value: {
+          name: 'New Portfolio Name'
+        }
+      },
+      description: {
+        summary: 'Update Description',
+        value: {
+          description: 'Updated portfolio description'
+        }
+      },
+      both: {
+        summary: 'Update Both',
+        value: {
+          name: 'New Portfolio Name',
+          description: 'Updated portfolio description'
+        }
+      }
+    }
+  })
+  @ApiSecurity('JWT-auth')
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Portfolio updated successfully'
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Portfolio not found'
+  })
+  async updatePortfolio(
+    @CurrentUser('id') userId: string,
+    @Param('portfolioId') portfolioId: string,
+    @Body() updatePortfolioDto: UpdatePortfolioDto
+  ) {
+    const portfolio = await this.portfolioService.updatePortfolio(
+      userId,
+      portfolioId,
+      updatePortfolioDto
+    );
+    return { portfolio };
+  }
+
+  @Delete(':portfolioId')
+  @ApiOperation({
+    summary: 'Delete portfolio',
+    description: 'Deletes a portfolio and all associated assets and transactions'
+  })
+  @ApiParam({
+    name: 'portfolioId',
+    description: 'ObjectId of the portfolio to delete',
+    type: 'string',
+  })
+  @ApiSecurity('JWT-auth')
+  @ApiResponse({
+    status: HttpStatus.NO_CONTENT,
+    description: 'Portfolio deleted successfully'
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Portfolio not found'
+  })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deletePortfolio(
+    @CurrentUser('id') userId: string,
+    @Param('portfolioId') portfolioId: string
+  ) {
+    await this.portfolioService.deletePortfolio(userId, portfolioId);
   }
 }

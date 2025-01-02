@@ -13,11 +13,13 @@ import { JwtRefreshGuard  } from '../guards';
 import { RegisterDto, LoginDto } from '../dto';
 import { JwtAuthGuard } from '../guards';
 import { Tokens } from '../';
+import { CurrentUser } from '../decorators';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
-  ApiBody
+  ApiBody,
+  ApiSecurity
 } from '@nestjs/swagger';
 
 @ApiTags('Authentication')
@@ -63,9 +65,10 @@ export class AuthController {
         description: 'User logged out successfully', 
         schema: { example: { message: 'User logged out successfully' } }
     })
-    async logout(@Req() req: any) {
-        const userId = req.user.sub;
-        return this.authService.logout(userId);
+    @ApiSecurity('JWT-auth')
+    async logout(@CurrentUser('id') userId: string) {
+        this.authService.logout(userId);
+        return { message: 'User is logged out successfully' };
     }
 
     @UseGuards(JwtRefreshGuard)
@@ -78,6 +81,7 @@ export class AuthController {
         schema: { example: { accessToken: 'newAccessToken', refreshToken: 'newRefreshToken' } }
     })
     @ApiResponse({ status: 401, description: 'Invalid refresh token' })
+    @ApiSecurity('JWT-auth')
     async refreshTokens(@Req() req: any) {
         const userId = req.user.sub;
         const refreshToken = req.user.refreshToken;

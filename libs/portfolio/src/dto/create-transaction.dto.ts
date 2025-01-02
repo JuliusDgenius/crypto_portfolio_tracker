@@ -1,91 +1,91 @@
-import { IsString, IsNumber, IsOptional, IsEnum, IsDate } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsNumber, IsOptional, IsEnum, IsDate, Min } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { TransactionType } from '@prisma/client';
+import { Type } from 'class-transformer';
+
+// First, let's define the transaction type enum to match our model
+export enum PortfolioTransactionType {
+  BUY = 'BUY',
+  SELL = 'SELL',
+  TRANSFER_IN = 'TRANSFER_IN',
+  TRANSFER_OUT = 'TRANSFER_OUT'
+}
 
 export class CreateTransactionDto {
   @ApiProperty({
-    description: 'Type of transaction',
     enum: TransactionType,
-    example: TransactionType.BUY,
-    required: true,
-    enumName: 'TransactionType',
+    description: 'Type of transaction',
+    example: TransactionType.BUY
   })
   @IsEnum(TransactionType)
   type: TransactionType;
 
   @ApiProperty({
-    description: 'Cryptocurrency symbol/ticker',
-    example: 'BTC',
-    required: true,
+    description: 'Cryptocurrency symbol or identifier',
+    example: 'BTC'
   })
   @IsString()
   cryptocurrency: string;
 
   @ApiProperty({
-    description: 'Amount of cryptocurrency to buy/sell',
+    description: 'Amount of cryptocurrency involved in the transaction',
     example: 0.5,
-    required: true,
-    type: Number,
+    minimum: 0
   })
   @IsNumber()
+  @Min(0)
   amount: number;
 
   @ApiProperty({
-    description: 'Price per unit in base currency',
-    example: 50000,
-    required: true,
-    type: Number,
+    description: 'Price per unit at the time of transaction',
+    example: 45000
   })
   @IsNumber()
-  price: number;
+  @Min(0)
+  pricePerUnit: number;
 
-  @ApiProperty({
-    description: 'Transaction fee in base currency',
-    example: 2.99,
-    required: false,
-    type: Number,
-    nullable: true,
+  @ApiPropertyOptional({
+    description: 'Transaction fee (if any)',
+    example: 2.5
   })
-  @IsNumber()
   @IsOptional()
+  @IsNumber()
+  @Min(0)
   fee?: number;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Exchange where the transaction occurred',
-    example: 'Binance',
-    required: false,
-    nullable: true,
+    example: 'Binance'
   })
-  @IsString()
   @IsOptional()
+  @IsString()
   exchange?: string;
 
-  @ApiProperty({
-    description: 'Wallet address or identifier',
-    example: '0x1234...',
-    required: false,
-    nullable: true,
+  @ApiPropertyOptional({
+    description: 'Wallet address involved in the transaction',
+    example: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e'
   })
-  @IsString()
   @IsOptional()
+  @IsString()
   wallet?: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Additional notes about the transaction',
-    example: 'Monthly DCA purchase',
-    required: false,
-    nullable: true,
+    example: 'DCA purchase for September'
   })
-  @IsString()
   @IsOptional()
+  @IsString()
   notes?: string;
 
   @ApiProperty({
-    description: 'Date and time of the transaction',
-    example: new Date().toISOString(),
-    required: true,
-    type: Date,
+    description: 'Date of the transaction',
+    example: '2024-01-01T12:00:00Z'
   })
+  @Type(() => Date)
   @IsDate()
   date: Date;
+
+  portfolioId: string;
+
+  assetId: string
 }

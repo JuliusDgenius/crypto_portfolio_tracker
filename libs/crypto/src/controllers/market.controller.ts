@@ -11,7 +11,9 @@ import {
   ApiOkResponse,
   ApiBadRequestResponse,
   ApiNotFoundResponse,
-  ApiInternalServerErrorResponse
+  ApiInternalServerErrorResponse,
+  ApiBearerAuth,
+  ApiSecurity
 } from '@nestjs/swagger';
 import { MarketService } from '../services/market.service';
 import {
@@ -22,7 +24,11 @@ import {
   MarketSearchResponse, 
   MarketTrendingResponse
 } from '../interfaces';
+import { JwtAuthGuard } from '../../../common/src';
 
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
+@ApiSecurity('JWT-auth')
 @ApiTags('Market Data')
 @Controller('market')
 export class MarketController {

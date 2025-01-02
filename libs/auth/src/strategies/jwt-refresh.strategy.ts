@@ -9,10 +9,11 @@ import {
   ExtractJwt,
   Strategy
 } from 'passport-jwt';
-import { ConfigService } from '@nestjs/config';
+import { ConfigService } from '../../../config/src';
 import { Request } from 'express';
 import { UserRepository } from '../../../core/src';
 import { JwtPayload } from '../interfaces';
+import { JwtSecretType } from './jwt-secrets';
 
 @Injectable()
 export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh') {
@@ -22,7 +23,7 @@ export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      secretOrKey: configService.get<string>('JWT_REFRESH_SECRET'),
+      secretOrKey: configService.get<string>(JwtSecretType.REFRESH),
       passReqToCallback: true,
     });
   }

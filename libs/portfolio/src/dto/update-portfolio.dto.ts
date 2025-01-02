@@ -1,4 +1,4 @@
-import { IsString, IsOptional } from 'class-validator';
+import { IsString, IsOptional, IsNotEmpty } from 'class-validator';
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 import { CreatePortfolioDto } from './create-portfolio.dto';
 

@@ -23,16 +23,18 @@ import {
   ApiParam,
   ApiBearerAuth,
   ApiQuery,
+  ApiSecurity,
 } from '@nestjs/swagger';
 
 @ApiTags('transactions')
 @ApiBearerAuth()
+@ApiSecurity('JWT-auth')
 @Controller('portfolio/:portfolioId/transaction')
 @UseGuards(JwtAuthGuard)
 export class TransactionController {
   constructor(private readonly transactionService: TransactionService) {}
 
-  @Post()
+  @Post('create')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Create a new transaction',
@@ -40,9 +42,8 @@ export class TransactionController {
   })
   @ApiParam({
     name: 'portfolioId',
-    description: 'UUID of the portfolio',
+    description: 'ObjectId of the portfolio',
     type: 'string',
-    format: 'uuid',
     required: true,
   })
   @ApiBody({
@@ -82,16 +83,16 @@ export class TransactionController {
         transaction: {
           type: 'object',
           properties: {
-            id: { type: 'string', format: 'uuid' },
+            id: { type: 'string', format: 'ObjectId' },
             type: { type: 'string', enum: ['BUY', 'SELL'] },
             cryptocurrency: { type: 'string' },
             amount: { type: 'number' },
             pricePerUnit: { type: 'number' },
             timestamp: { type: 'string', format: 'date-time' },
-            portfolioId: { type: 'string', format: 'uuid' },
+            portfolioId: { type: 'string', format: 'ObjectId' },
           },
         },
-        portfolio: { type: 'string', format: 'uuid' },
+        portfolio: { type: 'string', format: 'ObjectId' },
       },
     },
   })
@@ -108,13 +109,13 @@ export class TransactionController {
     description: 'Invalid transaction data provided',
   })
   async createTransaction(
-    @Param('portfolioId', ParseUUIDPipe) portfolioId: string,
+    @Param('portfolioId') portfolioId: string,
     @Body() createTransactionDto: CreateTransactionDto,
     @CurrentUser('id') userId: string,
   ) {
     const transaction = await this.transactionService.createTransaction(
-      portfolioId,
       userId,
+      portfolioId,
       createTransactionDto,
     );
     
@@ -124,16 +125,16 @@ export class TransactionController {
     };
   }
 
-  @Get()
+  @Get('transactions')
   @ApiOperation({
     summary: 'Get portfolio transactions',
     description: 'Retrieves a paginated list of transactions for a specific portfolio. Supports filtering by transaction type and cryptocurrency.',
   })
   @ApiParam({
     name: 'portfolioId',
-    description: 'UUID of the portfolio',
+    description: 'ObjectId of the portfolio',
     type: 'string',
-    format: 'uuid',
+    format: 'ObjectId',
     required: true,
   })
   @ApiQuery({
@@ -204,7 +205,7 @@ export class TransactionController {
     description: 'User does not have access to this portfolio',
   })
   async getTransactions(
-    @Param('portfolioId', ParseUUIDPipe) portfolioId: string,
+    @Param('portfolioId') portfolioId: string,
     @CurrentUser('id') userId: string,
     @Query('page') page = 1,
     @Query('limit') limit = 10,

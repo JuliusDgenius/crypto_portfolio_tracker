@@ -204,38 +204,6 @@ export class PriceService {
   }
 
   /**
-   * Creates and manages price alerts for users.
-   * Implements a pub/sub pattern for real-time alert notifications.
-   */
-  async createPriceAlert(
-    symbol: string,
-    alertData: { threshold: number; direction: 'above' | 'below' }
-  ): Promise<IPriceAlert> {
-    const alert = {
-      id: crypto.randomUUID(),
-      symbol,
-      ...alertData,
-      createdAt: new Date(),
-      triggered: false
-    };
-
-    // Store alert in Redis with no expiration
-    await this.redisService.set(
-      `crypto:alerts:${alert.id}`,
-      JSON.stringify(alert)
-    );
-
-    // Add to sorted set for efficient price checking
-    await this.redisService.zadd(
-      `crypto:alerts:${symbol}:${alertData.direction}`,
-      alertData.threshold,
-      alert.id
-    );
-
-    return alert;
-  }
-
-  /**
    * Retrieves comprehensive market statistics for a cryptocurrency.
    * Implements a tiered caching strategy with different expiration times
    * for different types of data.

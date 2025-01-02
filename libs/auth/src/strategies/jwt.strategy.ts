@@ -16,19 +16,10 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       secretOrKey: configService.get<string>(JwtSecretType.ACCESS),
     });
-
-    // Log the secret being used (be careful with this in production!)
-    console.log(
-      'JWT Strategy initialized with secret:',
-      configService.get<string>(
-        'JWT_VERIFICATION_SECRET')?.substring(0, 3) + '...');
   }
 
   async validate(payload: JwtPayload) {
-    console.log('JWT Strategy - Validating payload:', payload);
-
     const user = await this.userRepository.findById(payload.sub);
-    console.log('JWT Strategy - Found user:', user ? 'Yes' : 'No');
 
     if (!user) {
       throw new UnauthorizedException('User no longer exists');
