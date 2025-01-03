@@ -10,7 +10,9 @@ export interface IUser {
   createdAt: Date;
   updatedAt: Date;
 
-  
+  storeRefreshToken(userId: string, token: string): Promise<void>;
+  verifyRefreshToken(userId: string, token: string): Promise<boolean>;
+  invalidateRefreshToken(userId: string): Promise<void>;
 }
 
 // TODO:Relationships

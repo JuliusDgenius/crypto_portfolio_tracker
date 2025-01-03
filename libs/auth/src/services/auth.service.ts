@@ -75,7 +75,7 @@ export class AuthService {
       throw new Error('User email is missing');
     }
 
-    return this.generateTokens(user);
+    return await this.generateTokens(user);
   }
 
   /**
@@ -105,7 +105,26 @@ export class AuthService {
       throw new UnauthorizedException('User not found');
     }
 
-    return this.generateTokens(user);
+    // Verify and invalidate old refresh token
+    const isValidToken = await this.userRepository.verifyRefreshToken(userId, refreshToken);
+    if (!isValidToken) {
+      throw new UnauthorizedException("Invalid refresh token");
+    }
+    try {
+      // generate new tokens
+    const tokens = await this.generateTokens(user);
+
+    // store new tokens
+    await this.userRepository.storeRefreshToken(userId, tokens.refreshToken);
+
+    // invalidate old token
+    await this.userRepository.invalidateRefreshToken(userId);
+
+    return tokens;
+    } catch (error) {
+      console.error('Error refreshing tokens:', error);
+      throw new UnauthorizedException('Failed to refresh tokens');
+    }
   }
 
   /**
@@ -157,11 +176,10 @@ export class AuthService {
    * @param user - The user object for whom to generate tokens.
    * @returns An object containing the access and refresh tokens.
    */
-  private generateTokens(user: IUser): Tokens {
+  private async generateTokens(user: IUser): Promise<Tokens> {
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
-      // Only include name if it exists in the user object
       ...(user.name && {name: user.name}),
     };
 
@@ -175,6 +193,10 @@ export class AuthService {
         secret: this.configService.get(JwtSecretType.REFRESH),
         expiresIn: '7d',
       });
+
+      
+    // Store the refresh token
+    await this.userRepository.storeRefreshToken(user.id, refreshToken);
   
       return {
         accessToken,

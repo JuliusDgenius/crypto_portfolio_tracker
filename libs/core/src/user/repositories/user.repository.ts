@@ -1,4 +1,4 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../../database/src';
 import { IUser, JsonPreferences } from '../../../../core/src/user/interfaces';
 import { CreateUserDto } from '../dto/create-user.dto';
@@ -6,9 +6,12 @@ import { UpdateUserDto } from '../dto/update-user.dto';
 import { PasswordService } from '../services/password.service';
 import { Prisma, User } from '@prisma/client';
 import { transformValidatePrismaUser } from '../../../../common/src';
+import * as crypto from 'node:crypto';
 
 @Injectable()
 export class UserRepository {
+  private readonly logger = new Logger(UserRepository.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly passwordService: PasswordService,
@@ -183,18 +186,154 @@ export class UserRepository {
       }
   }
 
-  async invalidateRefreshToken(userId: string): Promise<void> {
-    // Implement your refresh token invalidation logic here.
+  /**
+   * Verifies if a refresh token is valid for a specific user.
+   * Checks if the token exists, isn't expired, and hasn't been revoked.
+   * 
+   * @param userId - The ID of the user
+   * @param token - The plaintext refresh token to verify
+   * @returns boolean indicating if the token is valid
+   */
+  async verifyRefreshToken(userId: string, token: string): Promise<boolean> {
     try {
-      // Example: setting a flag in the database
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: { refreshTokenInvalidated: true }, // Add this field to your schema
+      // Hash the provided token for comparison
+      const tokenHash = this.hashToken(token);
+
+      this.logger.debug(`Verifying token for user ${userId}`);
+
+      // Find the token in the database
+      const storedToken = await this.prisma.refreshToken.findFirst({
+        where: {
+          userId,
+          tokenHash,
+          isRevoked: false,
+          expiresAt: {
+            gt: new Date() // Token must not be expired
+          }
+        }
+      });
+
+      if (!storedToken) {
+        this.logger.debug('No valid token found in database');
+        return false;
+      }
+
+      // Check if any tokens in this family have been used for refresh
+      // If so, this could indicate a token reuse attack
+      const possibleReuse = await this.prisma.refreshToken.findFirst({
+        where: {
+          familyId: storedToken.familyId,
+          createdAt: {
+            gt: storedToken.createdAt 
+          }
+        }
+      });
+
+      if (possibleReuse) {
+        this.logger.warn(
+          `Token reuse detected for family ${storedToken.familyId}`
+        );
+        // Token reuse detected - revoke all tokens in this family
+        await this.prisma.refreshToken.updateMany({
+          where: { familyId: storedToken.familyId },
+          data: { isRevoked: true }
+        });
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      this.logger.error('Error verifying refresh token:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Stores a refresh token for a specific user.
+   * The token is stored as a hash to prevent token leakage from the database.
+   * Each user can have multiple active refresh tokens (one per device/session).
+   * 
+   * @param userId - The ID of the user
+   * @param token - The plaintext refresh token
+   */
+  async storeRefreshToken(userId: string, token: string): Promise<void> {
+    // Generate a hash of the refresh token
+    const tokenHash = this.hashToken(token);
+    
+    // Get current timestamp for token creation time
+    const createdAt = new Date();
+    
+    // Calculate expiration date (7 days from creation)
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+
+    // Generate a unique family ID for this token
+    // Token families help prevent parallel refresh token attacks
+    const familyId = crypto.randomBytes(16).toString('hex');
+
+    try {
+      await this.prisma.refreshToken.create({
+        data: {
+          userId,
+          tokenHash,
+          familyId,
+          createdAt,
+          expiresAt,
+          isRevoked: false
+        }
+      });
+
+      // Optional: Implement maximum tokens per user
+      // Remove oldest tokens if user has too many
+      const maxTokensPerUser = 5;
+      const userTokenCount = await this.prisma.refreshToken.count({
+        where: { userId }
+      });
+
+      if (userTokenCount > maxTokensPerUser) {
+        await this.prisma.refreshToken.deleteMany({
+          where: {
+            userId,
+            createdAt: {
+              lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // Older than 7 days
+            }
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error storing refresh token:', error);
+      throw new Error('Failed to store refresh token');
+    }
+  }
+
+  async invalidateRefreshToken(userId: string): Promise<void> {
+    try {
+      await this.prisma.refreshToken.updateMany({
+        where: { 
+          userId,
+          isRevoked: false
+        },
+        data: { isRevoked: true }
       });
     } catch (error) {
       console.error("Error invalidating refresh token:", error);
-      // Consider re-throwing the error or handling it appropriately in your application
       throw error
     }
+  }
+
+  /**
+   * Creates a secure hash of the refresh token.
+   * Uses SHA-256 with a pepper for additional security.
+   * 
+   * @param token - The plaintext token to hash
+   * @returns The hashed token
+   */
+  private hashToken(token: string): string {
+    // In production, this pepper should be in environment variables
+    const pepper = process.env.PEPPER_SECRET || "your_pepper_secret";
+    return crypto
+      .createHash('sha256')
+      .update(token + pepper)
+      .digest('hex');
   }
 }
