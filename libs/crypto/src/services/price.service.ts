@@ -3,7 +3,15 @@ import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '../../../config/src';
 import { RedisService } from '../../../database/src';
 import { catchError, firstValueFrom } from 'rxjs';
-import { ICryptoPrice, IHistoricalPrice, IMarketStats, IPriceAlert, IPriceResponse, ITechnicalIndicator } from '../interfaces';
+import {
+  ICryptoPrice,
+  IHistoricalPrice,
+  IMarketStats,
+  IPriceAlert,
+  IPriceResponse,
+  ITechnicalIndicator,
+  IAssetInfo
+} from '../interfaces';
 
 /**
  * Service for fetching and caching cryptocurrency prices.
@@ -321,6 +329,66 @@ export class PriceService {
       throw error;
     }
   }
+
+  /**
+ * Retrieves basic asset information including name and current price.
+ * Uses a dedicated cache configuration to optimize frequent lookups.
+ * 
+ * @param symbol - The cryptocurrency symbol/id to fetch information for
+ * @returns Promise containing the asset's name and current price
+ * @throws Error if the asset information cannot be retrieved
+ */
+async getAssetInfo(symbol: string): Promise<IAssetInfo> {
+  const cacheKey = `${this.cacheConfig.currentPrice.prefix}info:${symbol}`;
+  
+  // Check cache first
+  const cachedInfo = await this.redisService.get(cacheKey);
+  if (cachedInfo) {
+    return JSON.parse(cachedInfo);
+  }
+
+  try {
+    // Make a focused API call to get just what we need
+    const { data } = await firstValueFrom(
+      this.httpService.get(`${this.baseUrl}/coins/${symbol}`, {
+        params: {
+          localization: false,
+          tickers: false,
+          market_data: true,
+          community_data: false,
+          developer_data: false
+        },
+        headers: {
+          'x-cg-api-key': this.apiKey
+        }
+      }).pipe(
+        catchError(error => {
+          this.logger.error(`Failed to fetch asset info: ${error.message}`);
+          throw error;
+        })
+      )
+    );
+
+    const assetInfo: IAssetInfo = {
+      name: data.name,
+      symbol: data.symbol.toUpperCase(),
+      price: data.market_data.current_price.usd
+    };
+
+    // Cache the result with a shorter duration since it's frequently accessed
+    await this.redisService.set(
+      cacheKey,
+      JSON.stringify(assetInfo),
+      'EX',
+      this.cacheConfig.currentPrice.duration
+    );
+
+    return assetInfo;
+  } catch (error) {
+    this.logger.error(`Error fetching asset info for ${symbol}: ${error.message}`);
+    throw error;
+  }
+}
 
   // Private helper methods
 

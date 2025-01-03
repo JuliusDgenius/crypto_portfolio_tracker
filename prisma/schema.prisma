@@ -80,7 +80,10 @@ model Asset {
   lastUpdated     DateTime
   portfolio       Portfolio         @relation(fields: [portfolioId], references: [id])
   transactions    Transaction[]
-
+ 
+  // Back reference to Watchlist
+  watchlists      Watchlist[]     @relation("WatchlistToAsset", fields: [watchlistIds], references: [id])
+  watchlistIds    String[]        @db.ObjectId
 
   @@index([portfolioId, symbol])
 }
@@ -94,6 +97,14 @@ model Watchlist {
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   user            User             @relation(fields: [userId], references: [id])
+
+  // Relationship with assets
+  watchedAssets   Asset[]   @relation("WatchlistToAsset", fields: [assetIds], references: [id])
+  assetIds        String[]  @db.ObjectId
+
+  // Relationship with alerts
+  alerts          Alert[]   @relation(fields: [alertIds], references: [id])
+  alertIds        String[]  @db.ObjectId
 }
 
 model ExchangeAccount {
@@ -121,6 +132,10 @@ model Alert {
   updatedAt       DateTime         @updatedAt
   lastTriggered   DateTime?
   user            User             @relation(fields: [userId], references: [id])
+
+  // Relationship to watchlist
+  watchlists      Watchlist[] @relation(fields: [watchlistIds], references: [id])
+  watchlistIds    String[]    @db.ObjectId
 }
 
 model HistoricalData {

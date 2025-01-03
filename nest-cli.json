@@ -1,5 +1,5 @@
 {
- "$schema": "https://json.schemastore.org/nest-cli",
+  "$schema": "https://json.schemastore.org/nest-cli",
   "collection": "@nestjs/schematics",
   "monorepo": true,
   "root": "apps/api",
@@ -99,6 +99,15 @@
       "sourceRoot": "libs/shared/src",
       "compilerOptions": {
         "tsConfigPath": "libs/shared/tsconfig.json"
+      }
+    },
+    "watchlist": {
+      "type": "library",
+      "root": "libs/watchlist",
+      "entryFile": "index",
+      "sourceRoot": "libs/watchlist/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/watchlist/tsconfig.json"
       }
     }
   }

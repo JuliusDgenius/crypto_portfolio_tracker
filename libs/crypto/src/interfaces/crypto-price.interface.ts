@@ -16,6 +16,12 @@ export interface ICryptoPrice {
   lastUpdated: Date;
 }
 
+export interface IAssetInfo {
+  name: string;
+  price: number;
+  symbol: string;
+}
+
 /**
  * Represents a single historical price data point.
  * Used for charting and historical analysis.

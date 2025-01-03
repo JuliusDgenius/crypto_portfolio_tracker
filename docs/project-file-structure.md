@@ -1,59 +1,28 @@
-juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I 'node_modules'
+juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "node_modules"
 .
 ├── apps
-│   ├── api
-│   │   ├── nest-cli.json
-│   │   ├── package.json
-│   │   ├── package-lock.json
-│   │   ├── README.md
-│   │   ├── src
-│   │   │   ├── app.module.ts
-│   │   │   ├── health
-│   │   │   │   ├── health.controller.ts
-│   │   │   │   └── health.module.ts
-│   │   │   └── main.ts
-│   │   ├── test
-│   │   │   ├── app.e2e-spec.ts
-│   │   │   ├── database-test.module.ts
-│   │   │   ├── health.e2e-spec.ts
-│   │   │   └── jest-e2e.json
-│   │   └── tsconfig.json
-│   ├── frontend
-│   │   ├── index.html
-│   │   ├── jest.config.ts
-│   │   ├── project.json
-│   │   ├── public
-│   │   │   └── favicon.ico
-│   │   ├── src
-│   │   │   ├── app
-│   │   │   │   ├── app.spec.tsx
-│   │   │   │   ├── app.tsx
-│   │   │   │   └── nx-welcome.tsx
-│   │   │   ├── assets
-│   │   │   ├── main.tsx
-│   │   │   └── styles.css
-│   │   ├── tsconfig.app.json
-│   │   ├── tsconfig.json
-│   │   ├── tsconfig.spec.json
-│   │   └── vite.config.ts
-│   └── frontend-e2e
-│       ├── cypress.config.ts
-│       ├── project.json
+│   └── api
+│       ├── nest-cli.json
+│       ├── package.json
+│       ├── package-lock.json
+│       ├── README.md
 │       ├── src
-│       │   ├── e2e
-│       │   │   └── app.cy.ts
-│       │   ├── fixtures
-│       │   │   └── example.json
-│       │   └── support
-│       │       ├── app.po.ts
-│       │       ├── commands.ts
-│       │       └── e2e.ts
+│       │   ├── app.module.ts
+│       │   ├── health
+│       │   │   ├── health.controller.ts
+│       │   │   └── health.module.ts
+│       │   └── main.ts
+│       ├── test
+│       │   ├── app.e2e-spec.ts
+│       │   ├── database-test.module.ts
+│       │   ├── health.e2e-spec.ts
+│       │   └── jest-e2e.json
 │       └── tsconfig.json
 ├── dist
 │   └── apps
 │       └── api
-│           ├── main.e37bb21d544d192c4606.hot-update.js
-│           ├── main.e37bb21d544d192c4606.hot-update.json
+│           ├── main.3a408a06c449fe99ae90.hot-update.js
+│           ├── main.3a408a06c449fe99ae90.hot-update.json
 │           └── main.js
 ├── docker-compose.yml
 ├── Dockerfile.dev
@@ -95,6 +64,7 @@ juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I 'n
 │   │   │   └── strategies
 │   │   │       ├── index.ts
 │   │   │       ├── jwt-refresh.strategy.ts
+│   │   │       ├── jwt-secrets.ts
 │   │   │       └── jwt.strategy.ts
 │   │   └── tsconfig.json
 │   ├── common
@@ -265,6 +235,30 @@ juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I 'n
 │   │   │       └── redis.service.ts
 │   │   └── tsconfig.json
 │   └── portfolio
+│       ├── src
+│       │   ├── controllers
+│       │   │   ├── index.ts
+│       │   │   ├── portfolio.controller.ts
+│       │   │   └── transaction.controller.ts
+│       │   ├── dto
+│       │   │   ├── create-asset.dto.ts
+│       │   │   ├── create-portfolio.dto.ts
+│       │   │   ├── create-transaction.dto.ts
+│       │   │   ├── index.ts
+│       │   │   ├── update-asset.dto.ts
+│       │   │   ├── update-portfolio.dto.ts
+│       │   │   └── update-transaction.dto.ts
+│       │   ├── index.ts
+│       │   ├── portfolio.module.ts
+│       │   ├── services
+│       │   │   ├── analytics.service.ts
+│       │   │   ├── index.ts
+│       │   │   ├── portfolio.service.ts
+│       │   │   └── transaction.service.ts
+│       │   ├── types
+│       │   │   ├── index.ts
+│       │   │   └── portfolio.types.ts
+│       │   └── utils
 │       └── tsconfig.json
 ├── nest-cli.json
 ├── package.json
@@ -276,5 +270,3 @@ juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I 'n
 ├── tsconfig.build.json
 ├── tsconfig.json
 └── webpack.config.js
-
-75 directories, 201 files

@@ -17,8 +17,8 @@ import {
   ApiSecurity
 } from '@nestjs/swagger';
 import { PriceService } from '../services';
-import { ICryptoPrice } from '../interfaces';
-import { GetPricesDto } from '../dto/get-prices.dto';
+import { IAssetInfo, ICryptoPrice } from '../interfaces';
+import { GetPricesDto, GetAssetInfoDto } from '../dto';
 import { JwtAuthGuard } from '../../../common/src';
 
 /**
@@ -64,6 +64,26 @@ export class PriceController {
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
+  }
+
+  /**
+   * Retrieves asset information for a cryptocurrency.
+   * @param symbol - The cryptocurrency symbol
+   */
+  @Get('asset/info')
+  @ApiOperation({ summary: 'Get asset information for a crypto asset' })
+  @ApiQuery({ 
+  name: 'symbol', 
+  description: 'cryptocurrency symbol',
+  example: 'bitcoin'
+  })
+  @ApiResponse({ status: 200, description: 'Asset information retrieved successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid request parameters' })
+  async getAssetInfo(
+    @Query(new ValidationPipe({ transform: true })) query: GetAssetInfoDto
+  ): Promise<IAssetInfo> {
+    console.log("Hit with: ", query.symbol);
+    return await this.priceService.getAssetInfo(query.symbol);
   }
 
   /**
