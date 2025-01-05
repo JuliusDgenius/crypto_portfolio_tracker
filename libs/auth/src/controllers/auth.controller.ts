@@ -26,6 +26,7 @@ import {
   ApiBearerAuth,
   ApiHeader
 } from '@nestjs/swagger';
+import { User } from '@prisma/client';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -44,20 +45,20 @@ export class AuthController {
         description: 'User registration credentials'
     })
     @ApiResponse({ 
-        status: 201, 
-        description: 'User registered successfully', 
-        schema: {
-            properties: {
-                user: {
-                    type: 'object',
-                    properties: {
-                        id: { type: 'string', example: '123e4567-e89b-12d3-a456-426614174000' },
-                        email: { type: 'string', example: 'user@example.com' },
-                        name: { type: 'string', example: 'John Doe' },
-                        createdAt: { type: 'string', format: 'date-time' }
-                    }
-                }
+      status: 201, 
+      description: 'User registered successfully', 
+      schema: {
+        properties: {
+          user: {
+            type: 'object',
+              properties: {
+                id: { type: 'string', example: '123e4567-e89b-12d3-a456-426614174000' },
+                email: { type: 'string', example: 'user@example.com' },
+                name: { type: 'string', example: 'John Doe' },
+                createdAt: { type: 'string', format: 'date-time' }
+              }
             }
+          }
         }
     })
     @ApiResponse({ 
@@ -82,7 +83,6 @@ export class AuthController {
         description: 'Invalid registration data or email already exists'
     })
     async register(@Body() registerDto: RegisterDto) {
-        console.log("I am hit with:", registerDto);
         return this.authService.register(registerDto);
     }
 
@@ -99,63 +99,62 @@ export class AuthController {
         status: 200, 
         description: 'Login successful', 
         schema: {
-            properties: {
-                accessToken: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIs...' },
-                refreshToken: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIs...' }
-            }
+          properties: {
+          accessToken: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIs...' },
+          refreshToken: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIs...' }
         }
+    }
     })
     @ApiUnauthorizedResponse({ 
-        description: 'Invalid credentials or email not verified'
+      description: 'Invalid credentials or email not verified'
     })
     async login(@Body() loginDto: LoginDto): Promise<Tokens> {
-        console.log("You hit me with", loginDto);
-        return this.authService.login(loginDto);
+      return this.authService.login(loginDto);
     }
 
     @UseGuards(JwtAuthGuard)
     @Post('logout')
     @ApiSecurity('JWT-auth')
     @ApiOperation({ 
-        summary: 'Logout a user',
-        description: 'Invalidates the user\'s refresh token'
+      summary: 'Logout a user',
+      description: 'Invalidates the user\'s refresh token'
     })
     @ApiResponse({ 
       status: 200, 
       description: 'Logout successful',
       schema: {
         properties: {
-          message: { type: 'string', example: 'User logged out successfully' }
-          }
-        }
+        message: { type: 'string', example: 'User logged out successfully' }
+      }
+    }
     })
     @ApiUnauthorizedResponse({ description: 'Invalid or expired token' })
     async logout(@CurrentUser('id') userId: string) {
-        this.authService.logout(userId);
-        return { message: 'User is logged out successfully' };
+      console.log("userId", userId);
+      this.authService.logout(userId);
+      return { message: 'User is logged out successfully' };
     }
 
     @UseGuards(JwtRefreshGuard)
     @Post('refresh')
-    // @ApiBearerAuth('refresh-token')
-    @ApiSecurity('refresh-token')
-    @UseGuards(JwtRefreshGuard)
-    @Post('refresh')
-    @ApiSecurity('refresh-token')
-    async refreshTokens(
-      @CurrentUser('id') userId: string,
-      @CurrentUser('refreshToken') refreshToken: string
-      ) {
-        try {
-          this.logger.debug(`Refresh request received for user: ${userId}`);
-                
-          const tokens = await this.authService.refreshTokens(userId, refreshToken);
-          
-          this.logger.debug('Tokens refreshed successfully');
-      return tokens;
-    } catch(error) {
-      this.logger.error('Error refreshing tokens:', error);
-      throw new UnauthorizedException('Failed to refresh tokens');
+    @ApiOperation({ 
+      summary: 'Refresh access token',
+      description: 'Issues a new access token using a valid refresh token'
+    })
+    @ApiSecurity('JWT-auth')
+    @ApiHeader({
+      name: 'Authorization',
+      description: 'Enter Refresh token to get a new access token in the key icon right of this page.',
+    })
+    @ApiUnauthorizedResponse(
+      { description: 'Invalid or expired refresh token' 
+    })
+    async refreshToken(
+      @CurrentUser() user: User & { refreshToken: string }
+    ) {
+      console.log('userId received: ', user.id);
+      console.log('Refresh token received: ', user.refreshToken);
+
+      return this.authService.refreshTokens(user.id, user.refreshToken);
     }
-}
 }

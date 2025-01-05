@@ -1,19 +1,17 @@
-import { Injectable, ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import { Injectable, ExecutionContext, UnauthorizedException, Logger } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 
 @Injectable()
-export class RefreshTokenGuard extends AuthGuard('jwt-refresh') {
+export class JwtRefreshGuard extends AuthGuard('jwt-refresh') {
+  private readonly logger = new Logger(JwtRefreshGuard.name);
   constructor() {
     super();
   }
 
-  canActivate(context: ExecutionContext) {
-    return super.canActivate(context);
-  }
-
   handleRequest(err: any, user: any, info: any) {
     if (err || !user) {
-      throw new UnauthorizedException('Invalid refresh token');
+      this.logger.error(`Authentication failed: ${err?.message || 'Unknown error'}`);
+      throw err || new UnauthorizedException('Invalid refresh token');
     }
     return user;
   }

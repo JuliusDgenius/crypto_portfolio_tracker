@@ -1,6 +1,6 @@
 import { ConflictException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../../database/src';
-import { IUser, JsonPreferences } from '../../../../core/src/user/interfaces';
+import { IUser, JsonPreferences } from '../../../../common/src';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { PasswordService } from '../services/password.service';
@@ -33,6 +33,7 @@ export class UserRepository {
       throw new ConflictException("Email already exist");
     }
 
+    // Hash the password
     const hashedPassword = await this.passwordService.hash(dto.password);
 
     // Create our data object with the correct shape
@@ -200,6 +201,7 @@ export class UserRepository {
       const tokenHash = this.hashToken(token);
 
       this.logger.debug(`Verifying token for user ${userId}`);
+      this.logger.debug(`Hashed token: ${tokenHash}`);
 
       // Find the token in the database
       const storedToken = await this.prisma.refreshToken.findFirst({

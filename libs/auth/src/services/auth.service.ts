@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UserRepository, PasswordService } from '../../../core/src';
@@ -7,7 +7,7 @@ import { RegisterDto } from '../dto';
 import { ResetPasswordDto } from '../dto';
 import { VerifyEmailDto } from '../dto';
 import { Tokens, JwtPayload } from '../interfaces';
-import { IUser, TokenUser } from '../../../core/src/user/interfaces';
+import { IUser } from '../../../common/src';
 import { JwtSecretType } from '../strategies';
 
 /**
@@ -16,6 +16,8 @@ import { JwtSecretType } from '../strategies';
  */
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly userRepository: UserRepository,
     private readonly passwordService: PasswordService,
@@ -46,36 +48,30 @@ export class AuthService {
    * @throws UnauthorizedException if the credentials are invalid or email is not verified.
    */
   async login(dto: LoginDto): Promise<Tokens> {
-    const user = await this.userRepository.findByEmail(dto.email);
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
     try {
+      // check if user exists
+      const user = await this.userRepository.findByEmail(dto.email);
+      if (!user) {
+        throw new Error;
+      }
+
       const isPasswordValid = await this.passwordService.compare(
       dto.password,
       user.password,
-    );
-    if (!isPasswordValid) {
+      );
+      if (!isPasswordValid) {
+        throw new Error;
+      }
+
+       // if (!user.verified) {
+      //   throw new UnauthorizedException('Please verify your email first');
+      // }
+
+      return await this.generateTokens(user);
+    } catch (error) {
+      this.logger.error(`Error comparing password`);
       throw new UnauthorizedException('Invalid credentials');
     }
-  } catch(error) {
-    console.error('Error comparing password', error);
-    throw new Error('Authentication failed');
-  }
-
-    // if (!user.verified) {
-    //   throw new UnauthorizedException('Please verify your email first');
-    // }
-    
-    if (!user.id) {
-      throw new Error('User ID is missing');
-    }
-    if (!user.email) {
-      throw new Error('User email is missing');
-    }
-
-    return await this.generateTokens(user);
   }
 
   /**
@@ -100,30 +96,43 @@ export class AuthService {
    * @throws UnauthorizedException if the user is not found.
    */
   async refreshTokens(userId: string, refreshToken: string): Promise<Tokens> {
+    // First, get user and verify they exist
     const user = await this.userRepository.findById(userId);
     if (!user) {
-      throw new UnauthorizedException('User not found');
+      throw new UnauthorizedException('Access denied');  // Don't reveal if user exists
     }
-
-    // Verify and invalidate old refresh token
-    const isValidToken = await this.userRepository.verifyRefreshToken(userId, refreshToken);
-    if (!isValidToken) {
-      throw new UnauthorizedException("Invalid refresh token");
-    }
+  
     try {
-      // generate new tokens
-    const tokens = await this.generateTokens(user);
-
-    // store new tokens
-    await this.userRepository.storeRefreshToken(userId, tokens.refreshToken);
-
-    // invalidate old token
-    await this.userRepository.invalidateRefreshToken(userId);
-
-    return tokens;
+      // Verify the refresh token is valid
+      const isValidToken = await this.userRepository.verifyRefreshToken(userId, refreshToken);
+      if (!isValidToken) {
+        // If token is invalid, we should invalidate all refresh tokens for this user
+        // This prevents attacks using stolen refresh tokens
+        await this.userRepository.invalidateRefreshToken(userId);
+        throw new UnauthorizedException('Access denied');
+      }
+  
+      // IMPORTANT: Invalidate the old token BEFORE generating new ones
+      // This closes the security window
+      await this.userRepository.invalidateRefreshToken(userId);
+  
+      // Only after invalidating the old token do we generate new ones
+      const tokens = await this.generateTokens(user);
+      
+      // Store the new refresh token
+      await this.userRepository.storeRefreshToken(userId, tokens.refreshToken);
+  
+      return tokens;
     } catch (error) {
-      console.error('Error refreshing tokens:', error);
-      throw new UnauthorizedException('Failed to refresh tokens');
+      // Log the error but don't expose internal details to the client
+      console.error('Token refresh failed:', error);
+      
+      // If anything goes wrong during the refresh process,
+      // invalidate all tokens for this user as a safety measure
+      await this.userRepository.invalidateRefreshToken(userId)
+        .catch(err => console.error('Failed to invalidate tokens:', err));
+        
+      throw new UnauthorizedException('Access denied');
     }
   }
 
@@ -185,12 +194,12 @@ export class AuthService {
 
     try {
       const accessToken = this.jwtService.sign(payload, {
-        secret: this.configService.get(JwtSecretType.ACCESS),
+        secret: this.configService.get<string>(JwtSecretType.ACCESS),
         expiresIn: '15m',
       });
   
       const refreshToken = this.jwtService.sign(payload, {
-        secret: this.configService.get(JwtSecretType.REFRESH),
+        secret: this.configService.get<string>(JwtSecretType.REFRESH),
         expiresIn: '7d',
       });
 
