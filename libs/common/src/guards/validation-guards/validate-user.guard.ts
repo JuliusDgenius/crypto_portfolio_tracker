@@ -1,6 +1,5 @@
-import { emit } from 'process';
-import { JsonPreferences, IUser } from '../../../../core/src'
-import { User as PrismaUser } from '@prisma/client'; // Correct import
+import { JsonPreferences, IUser } from '../../interfaces';
+import { User as PrismaUser } from '@prisma/client';
   
 
 /**

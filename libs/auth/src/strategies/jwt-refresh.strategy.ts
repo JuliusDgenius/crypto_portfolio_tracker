@@ -3,13 +3,8 @@ import {
   Logger,
   UnauthorizedException
 } from '@nestjs/common';
-import {
-  PassportStrategy
-} from '@nestjs/passport';
-import {
-  ExtractJwt,
-  Strategy
-} from 'passport-jwt';
+import { PassportStrategy } from '@nestjs/passport';
+import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '../../../config/src';
 import { Request } from 'express';
 import { UserRepository } from '../../../core/src';
@@ -28,13 +23,11 @@ export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       secretOrKey: configService.get<string>(JwtSecretType.REFRESH),
       passReqToCallback: true,
-
       ignoreExpiration: false,
-      jwtid: undefined,
     });
   }
 
-  async validate(req: Request, payload: JwtPayload) {
+  async validate(req: Request, payload: JwtPayload): Promise<any> {
     try {
       this.logger.debug('Validating refresh token for user:', payload.sub);
 
@@ -59,6 +52,7 @@ export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
         throw new UnauthorizedException('Invalid token format');
       }
 
+      // Look up user in the database
       const user = await this.userRepository.findById(payload.sub);
 
       if (!user) {
@@ -77,8 +71,9 @@ export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
       this.logger.debug(`Token validation result: ${isValidRefreshToken}`);
 
       if (!isValidRefreshToken) {
+        await this.userRepository.invalidateRefreshToken(user.id);
         this.logger.debug('Invalid refresh token for user:', payload.sub);
-        throw new UnauthorizedException('Invalid refresh token');
+        throw new UnauthorizedException('Invalid token');
       }
 
       this.logger.debug('Refresh token validated successfully');
@@ -90,8 +85,8 @@ export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
 
       } catch (error) {
         this.logger.error('Validation error:', error);
-      throw error;
+        if (error instanceof UnauthorizedException) throw error;
+        throw new UnauthorizedException('Token validation failed');
     }
-    throw new UnauthorizedException('Token validation failed');
   }
 }

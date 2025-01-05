@@ -1,36 +1,37 @@
-import { createParamDecorator, ExecutionContext } from '@nestjs/common';
+import { createParamDecorator, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { User } from '@prisma/client';
 
 /**
- * Enhanced decorator to retrieve the current user or specific user properties from the request.
- * Handles special cases like refresh token extraction from the Authorization header.
+ * Parameter decorator to extract the current user or specific user properties from the request.
  * 
- * @param {string | keyof User} data - The specific property to retrieve or special key
- * @param {ExecutionContext} ctx - The execution context containing the request
- * @returns {User | any} - Returns the user object, a specific user property, or special value
+ * Usage examples:
+ * @CurrentUser() user: User - Gets the entire user object
+ * @CurrentUser('email') email: string - Gets just the email property
+ * 
+ * @param {keyof User | undefined} propertyKey - Optional property key to extract from user
+ * @param {ExecutionContext} ctx - Execution context containing the request
+ * @returns {User | any} The user object or specified user property
+ * 
+ * @throws {UnauthorizedException} When no user is found in the request
  */
-export const CurrentUser = createParamDecorator(
-  (data: string | keyof User, ctx: ExecutionContext) => {
+  export const CurrentUser = createParamDecorator(
+  (data: keyof User | undefined, ctx: ExecutionContext) => {
     const request = ctx.switchToHttp().getRequest();
-    const user = request.user;
-
-    // Special case for refresh token extraction
-    if (data === 'refreshToken') {
-      const authHeader = request.headers.authorization;
-      if (!authHeader) return null;
-      
-      // Extract the token from "Bearer <token>"
-      const [bearer, token] = authHeader.split(' ');
-      if (bearer !== 'Bearer' || !token) return null;
-      
-      return token;
+    console.log("Request object:=> ", request);
+    
+    // Ensure user exists on request
+    if (!request.user) {
+      throw new UnauthorizedException('No user found on request');
     }
 
-    // Handle regular user properties
-    if (typeof data === 'string' && data in user) {
+    const user: User = request.user;
+
+    // If a specific property was requested, return just that property
+    if (data) {
       return user[data];
     }
 
-    return data ? null : user;
-  },
+    // Otherwise return the entire user object
+    return user;
+  }
 );

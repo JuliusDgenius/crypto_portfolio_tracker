@@ -1,5 +1,3 @@
-// libs/core/src/entities/user.entity.ts
-// Base entity for user management
 export class UserEntity {
     id: string;
     email: string;
