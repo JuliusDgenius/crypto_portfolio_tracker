@@ -1,0 +1,18 @@
+{{!-- two-factor-setup.hbs --}}
+{{#> layout}}
+    <h2>Two-Factor Authentication Enabled</h2>
+    <p>Hello {{username}},</p>
+    <p>This email confirms that two-factor authentication (2FA) has been successfully enabled on your account.</p>
+    <p>With 2FA enabled, you'll need both your password and a verification code to sign in. This adds an extra layer of security to your account.</p>
+    <div class="alert">
+        <p>Important Security Tips:</p>
+        <ul>
+            <li>Keep your recovery codes in a safe place</li>
+            <li>Don't share your 2FA codes with anyone</li>
+            <li>Set up backup 2FA methods if possible</li>
+        </ul>
+    </div>
+    <div style="text-align: center;">
+        <a href="{{securitySettingsLink}}" class="button">Review Security Settings</a>
+    </div>
+{{/layout}}

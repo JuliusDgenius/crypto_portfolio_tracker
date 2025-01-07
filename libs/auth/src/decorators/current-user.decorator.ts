@@ -17,7 +17,6 @@ import { User } from '@prisma/client';
   export const CurrentUser = createParamDecorator(
   (data: keyof User | undefined, ctx: ExecutionContext) => {
     const request = ctx.switchToHttp().getRequest();
-    console.log("Request object:=> ", request);
     
     // Ensure user exists on request
     if (!request.user) {

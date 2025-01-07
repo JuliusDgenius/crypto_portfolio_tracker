@@ -1,14 +1,15 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UserRepository, PasswordService } from '../../../core/src';
-import { LoginDto } from '../dto';
+import { DeleteAccountDto, LoginDto } from '../dto';
 import { RegisterDto } from '../dto';
 import { ResetPasswordDto } from '../dto';
 import { VerifyEmailDto } from '../dto';
-import { Tokens, JwtPayload } from '../interfaces';
+import { Tokens, JwtPayload, TempToken } from '../interfaces';
 import { IUser } from '../../../common/src';
 import { JwtSecretType } from '../strategies';
+import { EmailService } from '../../../common/src/email/email.service';
 
 /**
  * AuthService handles authentication-related operations such as registration,
@@ -23,6 +24,7 @@ export class AuthService {
     private readonly passwordService: PasswordService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly emailService: EmailService,
   ) {}
 
   /**
@@ -34,8 +36,12 @@ export class AuthService {
     const user = await this.userRepository.create(dto);
     const verificationToken = this.generateVerificationToken(user.id!);
 
-    // TODO: send email
-    // await this.emailService.sendVerificationEmail(user.email, verificationToken);
+    // send verifiction email
+    await this.emailService.sendVerificationEmail(
+      user.email,
+      verificationToken,
+      user?.name ?? 'User'
+    );
 
     delete user.password
     return {  user }
@@ -55,21 +61,25 @@ export class AuthService {
         throw new Error;
       }
 
+    if (!user.verified) {
+      throw new UnauthorizedException('Please verify your email first');
+    }
+
       const isPasswordValid = await this.passwordService.compare(
       dto.password,
       user.password,
       );
       if (!isPasswordValid) {
-        throw new Error;
+        this.logger.debug(`Password not match`);
       }
-
-       // if (!user.verified) {
-      //   throw new UnauthorizedException('Please verify your email first');
-      // }
 
       return await this.generateTokens(user);
     } catch (error) {
-      this.logger.error(`Error comparing password`);
+      
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      this.logger.error(`Login error: ${error.message}`);
       throw new UnauthorizedException('Invalid credentials');
     }
   }
@@ -99,13 +109,18 @@ export class AuthService {
     // First, get user and verify they exist
     const user = await this.userRepository.findById(userId);
     if (!user) {
-      throw new UnauthorizedException('Access denied');  // Don't reveal if user exists
+      throw new UnauthorizedException('Access denied');
+    }
+
+    if (!refreshToken) {
+      throw new UnauthorizedException(`No refresh Token`)
     }
   
     try {
       // Verify the refresh token is valid
       const isValidToken = await this.userRepository.verifyRefreshToken(userId, refreshToken);
       if (!isValidToken) {
+        this.logger.debug(`Refresh token invalid ${refreshToken}`);
         // If token is invalid, we should invalidate all refresh tokens for this user
         // This prevents attacks using stolen refresh tokens
         await this.userRepository.invalidateRefreshToken(userId);
@@ -124,9 +139,9 @@ export class AuthService {
   
       return tokens;
     } catch (error) {
-      // Log the error but don't expose internal details to the client
-      console.error('Token refresh failed:', error);
-      
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
       // If anything goes wrong during the refresh process,
       // invalidate all tokens for this user as a safety measure
       await this.userRepository.invalidateRefreshToken(userId)
@@ -137,18 +152,153 @@ export class AuthService {
   }
 
   /**
+   * Handles password reset request and sends email
+   */
+  async handlePasswordResetRequest(email: string): Promise<void> {
+    // check that user exists
+    const user = await this.userRepository.findByEmail(email);
+    
+    // Send email even if user not found to prevent email enumeration
+    if (user) {
+      const resetToken = this.generatePasswordResetToken(user.id);
+      await this.emailService.sendPasswordResetEmail(
+        email,
+        resetToken,
+        user.name
+      );
+    }
+    
+    // Log for security audit
+    this.logger.log(`Password reset requested for email: ${email}`);
+  }
+
+  /**
    * Resets a user's password using a reset token.
    * @param dto - The reset password data transfer object containing the token and new password.
    * @returns A promise that resolves when the password is reset.
    * @throws UnauthorizedException if the token is invalid.
    */
   async resetPassword(dto: ResetPasswordDto): Promise<void> {
-    const payload = this.jwtService.verify(dto.token, {
-      secret: this.configService.get('JWT_RESET_SECRET'),
-    });
+    try {
+      const payload = this.jwtService.verify(dto.token, {
+        secret: this.configService.get('JWT_RESET_SECRET'),
+        maxAge: '1h',
+      });
 
-    const hashedPassword = await this.passwordService.hash(dto.newPassword);
-    await this.userRepository.updatePassword(payload.sub, hashedPassword);
+      const user = await this.userRepository.findById(payload.sub);
+      if (!user) {
+        throw new UnauthorizedException('Invalid reset token');
+      }
+
+      const hashedPassword = await this.passwordService.hash(dto.newPassword);
+      await this.userRepository.updatePassword(user.id, hashedPassword);
+      this.logger.debug(`Password updated successfully ${hashedPassword}`);
+      
+      // Send confirmation email
+      await this.emailService.sendPasswordChangeNotification(
+        user.email,
+        user.name
+      );
+
+      this.logger.log(`Password successfully reset for user: ${user.id}`);
+    } catch (error) {
+      this.logger.error(`Password reset failed: ${error.message}`);
+      throw new UnauthorizedException('Invalid or expired reset token');
+    }
+  }
+
+  /**
+   * Sets up 2FA for a user
+   */
+  async setupTwoFactor(userId: string): Promise<void> {
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // Enable 2FA in the database
+    await this.userRepository.toggle2FA(userId, true);
+    
+    // Send confirmation email
+    await this.emailService.sendTwoFactorSetupEmail(
+      user.email,
+      user.name
+    );
+
+    this.logger.log(`2FA enabled for user: ${userId}`);
+  }
+
+  /**
+   * Disables 2FA for a user
+   */
+  async disableTwoFactor(userId: string): Promise<void> {
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // disable 2FA in the database
+    await this.userRepository.toggle2FA(userId, false);
+
+    this.logger.log(`2FA disabled for user: ${userId}`);
+  }
+
+  /**
+   * Handles secure account deletion
+   */
+  async deleteAccount(userId: string, dto: DeleteAccountDto): Promise<void> {
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // Verify password before deletion
+    const isPasswordValid = await this.passwordService.compare(
+      dto.password,
+      user.password
+    );
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid password');
+    }
+
+    // Perform deletion
+    await this.userRepository.softDeleteUser(userId);
+    
+    // Send confirmation email
+    await this.emailService.sendAccountDeletionEmail(
+      user.email,
+      user.name
+    );
+
+    this.logger.log(`Account deleted for user: ${userId}`);
+  }
+
+  /**
+   * Handles suspicious login detection and notification
+   */
+  async handleSuspiciousLogin(
+    userId: string,
+    loginDetails: {
+      ipAddress: string;
+      deviceInfo: string;
+      location?: string;
+    }
+  ): Promise<void> {
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      return; // Silent return for security
+    }
+
+    await this.emailService.sendSecurityAlert(
+      user.email,
+      user.name,
+      {
+        timestamp: new Date(),
+        ...loginDetails
+      }
+    );
+
+    this.logger.warn(`Suspicious login detected for user: ${userId}`, loginDetails);
   }
 
   /**
@@ -179,6 +329,23 @@ export class AuthService {
       },
     );
   }
+
+//   private async generateTempToken(user: IUser): Promise<TempToken> {
+//     const payload = {
+//       sub: user.id
+//     };
+
+//     try {
+//       const tempToken = this.jwtService.sign(payload, {
+//         secret: this.configService.get<string>(JwtSecretType.ACCESS),
+//         expiresIn: '5m',
+//       });
+
+//     return tempToken as unknown as TempToken;
+//   } catch(err) {
+//     this.logger.debug('Failed to generate temporary token');
+//   }
+// }
 
   /**
    * Generates access and refresh tokens for a user.
@@ -216,5 +383,18 @@ export class AuthService {
       console.error('Error generating tokens:', error);
       throw new Error('Failed to generate authentication tokens');
     }
+  }
+
+   /**
+   * Generates a time-limited token for password reset
+   */
+   private generatePasswordResetToken(userId: string): string {
+    return this.jwtService.sign(
+      { sub: userId },
+      {
+        secret: this.configService.get('JWT_RESET_SECRET'),
+        expiresIn: '1h', // Token expires in 1 hour
+      }
+    );
   }
 }

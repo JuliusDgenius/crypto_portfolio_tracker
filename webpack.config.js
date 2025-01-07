@@ -1,4 +1,5 @@
 const path = require('path');
+const CopyPlugin = require('copy-webpack-plugin');
 const nodeExternals = require('webpack-node-externals');
 
 module.exports = (options, webpack) => {
@@ -63,6 +64,15 @@ module.exports = (options, webpack) => {
       new webpack.HotModuleReplacementPlugin(),
       new webpack.WatchIgnorePlugin({
         paths: [/\.js$/, /\.d\.ts$/]
+      }),
+      new CopyPlugin({
+        patterns: [
+          {
+            from: path.join(rootDir, 'libs/common/src/email/templates'),
+            to: path.join(rootDir, 'dist/apps/api/templates'),
+            noErrorOnMissing: true,
+          }
+        ]
       })
     ],
     
