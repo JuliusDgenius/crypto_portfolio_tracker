@@ -17,3 +17,6 @@ export * from './user/dto';
 
 // Entities
 export * from './base/base.entity';
+
+// Exchange account
+export * from './exchange-account';

@@ -7,7 +7,7 @@ import { RegisterDto } from '../dto';
 import { ResetPasswordDto } from '../dto';
 import { VerifyEmailDto } from '../dto';
 import { Tokens, JwtPayload, TempToken } from '../interfaces';
-import { IUser } from '../../../common/src';
+import { InvalidTokenException, IUser, UserNotFoundException } from '../../../common/src';
 import { JwtSecretType } from '../strategies';
 import { EmailService } from '../../../common/src/email/email.service';
 
@@ -109,11 +109,7 @@ export class AuthService {
     // First, get user and verify they exist
     const user = await this.userRepository.findById(userId);
     if (!user) {
-      throw new UnauthorizedException('Access denied');
-    }
-
-    if (!refreshToken) {
-      throw new UnauthorizedException(`No refresh Token`)
+      throw new UserNotFoundException();
     }
   
     try {
@@ -124,7 +120,7 @@ export class AuthService {
         // If token is invalid, we should invalidate all refresh tokens for this user
         // This prevents attacks using stolen refresh tokens
         await this.userRepository.invalidateRefreshToken(userId);
-        throw new UnauthorizedException('Access denied');
+        throw new InvalidTokenException();
       }
   
       // IMPORTANT: Invalidate the old token BEFORE generating new ones
@@ -139,6 +135,11 @@ export class AuthService {
   
       return tokens;
     } catch (error) {
+      this.logger.error(
+        `Refresh token error for user ${userId}: ${error.message}`,
+        error.stack
+      );
+
       if (error instanceof UnauthorizedException) {
         throw error;
       }
@@ -329,23 +330,6 @@ export class AuthService {
       },
     );
   }
-
-//   private async generateTempToken(user: IUser): Promise<TempToken> {
-//     const payload = {
-//       sub: user.id
-//     };
-
-//     try {
-//       const tempToken = this.jwtService.sign(payload, {
-//         secret: this.configService.get<string>(JwtSecretType.ACCESS),
-//         expiresIn: '5m',
-//       });
-
-//     return tempToken as unknown as TempToken;
-//   } catch(err) {
-//     this.logger.debug('Failed to generate temporary token');
-//   }
-// }
 
   /**
    * Generates access and refresh tokens for a user.

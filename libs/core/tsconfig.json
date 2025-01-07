@@ -36,6 +36,8 @@
   ],
   // Library dependencies
   "references": [
-    {"path": "../common"}
+    {"path": "../common"},
+    {"path": "../crypto"},
+    {"path": "../auth"},
   ]
 }
