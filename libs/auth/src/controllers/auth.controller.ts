@@ -146,7 +146,7 @@ export class AuthController {
       description: 'Issues a new access token using a valid refresh token'
     })
     @ApiSecurity('JWT-auth')
-    @ApiResponse({ 
+    @ApiResponse({
       status: 200, 
       description: ' successful', 
       schema: {
