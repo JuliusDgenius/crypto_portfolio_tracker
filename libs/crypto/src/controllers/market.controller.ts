@@ -38,7 +38,7 @@ export class MarketController {
     private readonly marketService: MarketService,
   ) {}
 
-  @Get('search')
+  @Get(':symbol/search')
   @ApiOperation({
     summary: 'Search cryptocurrencies',
     description: 'Search for cryptocurrencies by name or symbol.\

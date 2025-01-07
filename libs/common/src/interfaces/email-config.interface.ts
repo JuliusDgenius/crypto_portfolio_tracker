@@ -11,5 +11,6 @@ export interface EmailConfig {
     mock?: boolean;
     baseUrl: string;
     supportEmail: string;
+    emailEnabled?: boolean
   }
   

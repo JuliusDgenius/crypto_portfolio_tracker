@@ -38,8 +38,6 @@ export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
         throw new UnauthorizedException('No refresh token provided');
       }
 
-      this.logger.debug(`Refresh token found: ${refreshToken.substring(0, 10)}...`);
-
       // Verify token structure before database lookup
       try {
         const tokenParts = refreshToken.split('.');

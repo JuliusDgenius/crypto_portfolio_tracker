@@ -1,6 +1,6 @@
 import { ConflictException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../../database/src';
-import { IUser, JsonPreferences } from '../../../../common/src';
+import { IUser, JsonPreferences, transformValidatePreferences } from '../../../../common/src';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { PasswordService } from '../services/password.service';
@@ -115,7 +115,7 @@ export class UserRepository {
         });
         return transformValidatePrismaUser(prismaUser);
     } catch (error) {
-        console.error("Error updating user:", error);
+        this.logger.error("Error updating user:", error.message);
         return null;
     }
 }
@@ -124,16 +124,27 @@ export class UserRepository {
     id: string, hashedPassword: string
   ): Promise<IUser | null> {
     try {
-        const prismaUser = await this.prisma.user.update({
-          where: {
-            id
-          },
-          data: { password: hashedPassword }
-        });
-        return transformValidatePrismaUser(prismaUser);
+      const prismaUser = await this.prisma.user.update({
+        where: {
+          id
+        },
+        data: { password: hashedPassword }
+      });
+
+      await this.prisma.refreshToken.updateMany({
+        where: { 
+          userId: id,
+          isRevoked: false
+        },
+        data: { 
+          isRevoked: true,
+        }
+      });
+
+      return transformValidatePrismaUser(prismaUser);
     } catch (error) {
-        console.error("Error updating user password:", error);
-        return null;
+      this.logger.error("Error updating user password:", error.message);
+      return null;
     }
 }
 
@@ -152,17 +163,87 @@ export class UserRepository {
     }
 }
 
-  async toggle2FA(id: string, enabled: boolean): Promise<IUser | null> {
-    try {
-        const prismaUser = await this.prisma.user.update({
-          where: { id }, data: { twoFactorEnabled: enabled }
-        });
-        return transformValidatePrismaUser(prismaUser);
-    } catch (error) {
-        console.error("Error toggling 2FA:", error);
-        return null;
+async toggle2FA(userId: string, enable: boolean): Promise<IUser | null> {
+  try {
+    // Start a transaction to ensure atomicity
+    const updatedUser = await this.prisma.$transaction(async (prisma) => {
+      // Fetch the user
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      // Check current 2FA status to avoid redundant operations
+      if (enable && user.twoFactorEnabled) {
+        throw new Error('Two-factor authentication is already enabled');
+      }
+
+      if (!enable && !user.twoFactorEnabled) {
+        throw new Error('Two-factor authentication is already disabled');
+      }
+
+      // Prepare updated data
+      const updatedData: any = {
+        twoFactorEnabled: enable,
+        updatedAt: new Date(), // Always update the timestamp
+      };
+
+      // If enabling 2FA, update preferences for security notifications
+      if (enable) {
+        updatedData.preferences = {
+          ...transformValidatePreferences(user.preferences),
+          notifications: {
+            ...(user.preferences as any).notifications,
+            email: true,
+            push: true,
+          },
+        };
+      }
+
+      // If disabling 2FA, optionally revert related settings (if needed)
+      if (!enable) {
+        updatedData.preferences = {
+          ...transformValidatePreferences(user.preferences),
+          notifications: {
+            ...(user.preferences as any).notifications,
+            // Optional: Revert specific notification settings
+            email: false,
+            push: false,
+          },
+        };
+      }
+
+      // Update the user record
+      const prismaUser = await prisma.user.update({
+        where: { id: userId },
+        data: updatedData,
+      });
+
+      return transformValidatePrismaUser(prismaUser);
+    });
+
+    if (!updatedUser) {
+      throw new Error('Failed to update 2FA settings');
     }
+
+    this.logger.log(
+      `Successfully ${enable ? 'enabled' : 'disabled'} 2FA for user: ${userId}`
+    );
+    return updatedUser;
+  } catch (error) {
+    this.logger.error(
+      `Failed to ${enable ? 'enable' : 'disable'} 2FA for user ${userId}: ${error.message}`
+    );
+    throw new Error(
+      `Failed to ${enable ? 'enable' : 'disable'} two-factor authentication: ${error.message}`
+    );
+  }
 }
+
+
 
   async updatePreferences(
     id: string, preferences: Partial<JsonPreferences>
@@ -201,7 +282,6 @@ export class UserRepository {
       const tokenHash = this.hashToken(token);
 
       this.logger.debug(`Verifying token for user ${userId}`);
-      this.logger.debug(`Hashed token: ${tokenHash}`);
 
       // Find the token in the database
       const storedToken = await this.prisma.refreshToken.findFirst({
@@ -303,7 +383,6 @@ export class UserRepository {
         });
       }
     } catch (error) {
-      console.error('Error storing refresh token:', error);
       throw new Error('Failed to store refresh token');
     }
   }
@@ -320,6 +399,91 @@ export class UserRepository {
     } catch (error) {
       console.error("Error invalidating refresh token:", error);
       throw error
+    }
+  }
+
+   /**
+   * Soft deletes a user account while preserving data for compliance and security purposes.
+   * This method:
+   * 1. Marks the account as deleted
+   * 2. Anonymizes personal information
+   * 3. Maintains an audit trail
+   * 4. Preserves necessary data for legal compliance
+   * 
+   * @param userId - The ID of the user to soft delete
+   * @returns Promise<void>
+   * @throws Error if the user is not found or deletion fails
+   */
+  async softDeleteUser(userId: string): Promise<void> {
+    try {
+      // Start a transaction to ensure all operations complete atomically
+      await this.prisma.$transaction(async (prisma) => {
+        // Get current timestamp for consistent dating across operations
+        const deletionTimestamp = new Date();
+  
+        // First, fetch the user to ensure they exist
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          include: {
+            refreshTokens: true,  // Include related tokens for cleanup
+            portfolios: true,     // Include portfolios for audit purposes
+            watchlists: true,     // Include watchlists for audit purposes
+            exchangeAccounts: true // Include exchange accounts for cleanup
+          }
+        });
+  
+        if (!user) {
+          throw new Error('User not found');
+        }
+  
+        // Invalidate all refresh tokens
+        await prisma.refreshToken.updateMany({
+          where: { userId },
+          data: { isRevoked: true }
+        });
+  
+        // Deactivate exchange accounts
+        await prisma.exchangeAccount.updateMany({
+          where: { userId },
+          data: { 
+            isActive: false,
+            // Clear sensitive data
+            apiKey: '[REDACTED]',
+            apiSecret: '[REDACTED]',
+            updatedAt: deletionTimestamp
+          }
+        });
+  
+        // Update the user record
+        // Note: We're working within the schema constraints while maintaining privacy
+        await prisma.user.update({
+          where: { id: userId },
+          data: {
+            email: `deleted_${userId}@redacted.local`,
+            name: 'Deleted User',
+            password: crypto.randomBytes(32).toString('hex'), // Invalidate the password
+            profilePicture: null,
+            refreshTokenInvalidated: true,
+            verified: false,
+            twoFactorEnabled: false,
+            preferences: {
+              currency: 'USD',
+              theme: 'light',
+              notifications: {
+                email: false,
+                push: false,
+                priceAlerts: false
+              }
+            },
+            updatedAt: deletionTimestamp
+          }
+        });
+      });
+  
+      this.logger.log(`Successfully soft deleted user: ${userId}`);
+    } catch (error) {
+      this.logger.error(`Failed to soft delete user ${userId}: ${error.message}`);
+      throw new Error(`Failed to delete user account: ${error.message}`);
     }
   }
 

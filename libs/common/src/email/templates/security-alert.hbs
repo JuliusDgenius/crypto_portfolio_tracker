@@ -1,0 +1,18 @@
+{{!-- security-alert.hbs --}}
+{{#> layout}}
+    <h2>New Login Detected</h2>
+    <p>Hello {{username}},</p>
+    <p>We detected a new login to your account with the following details:</p>
+    <div style="background-color: #f8f9fa; padding: 15px; border-radius: 4px;">
+        <p><strong>Time:</strong> {{loginDetails.timestamp}}</p>
+        <p><strong>IP Address:</strong> {{loginDetails.ipAddress}}</p>
+        <p><strong>Device:</strong> {{loginDetails.deviceInfo}}</p>
+        {{#if loginDetails.location}}
+            <p><strong>Location:</strong> {{loginDetails.location}}</p>
+        {{/if}}
+    </div>
+    <p>If this wasn't you, please secure your account immediately:</p>
+    <div style="text-align: center;">
+        <a href="{{settingsLink}}" class="button">Review Security Settings</a>
+    </div>
+{{/layout}}

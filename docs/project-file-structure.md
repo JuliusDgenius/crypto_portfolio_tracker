@@ -1,4 +1,4 @@
-juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "node_modules"
+uliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "node_modules"
 .
 ├── apps
 │   └── api
@@ -21,8 +21,8 @@ juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "n
 ├── dist
 │   └── apps
 │       └── api
-│           ├── main.3a408a06c449fe99ae90.hot-update.js
-│           ├── main.3a408a06c449fe99ae90.hot-update.json
+│           ├── main.4cf55f1af54a5504c2b6.hot-update.js
+│           ├── main.4cf55f1af54a5504c2b6.hot-update.json
 │           └── main.js
 ├── docker-compose.yml
 ├── Dockerfile.dev
@@ -47,6 +47,7 @@ juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "n
 │   │   │   ├── dto
 │   │   │   │   ├── index.ts
 │   │   │   │   ├── login.dto.ts
+│   │   │   │   ├── refresh-token.dto.ts
 │   │   │   │   ├── register.dto.ts
 │   │   │   │   ├── reset-password.dto.ts
 │   │   │   │   └── verify-email.dto.ts
@@ -76,6 +77,23 @@ juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "n
 │   │   │   │   ├── public.decorator.ts
 │   │   │   │   ├── roles.decorator.ts
 │   │   │   │   └── user.decorator.ts
+│   │   │   ├── dto
+│   │   │   ├── email
+│   │   │   │   ├── config
+│   │   │   │   │   ├── email.config.ts
+│   │   │   │   │   └── index.ts
+│   │   │   │   ├── email.module.ts
+│   │   │   │   ├── email.service.ts
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── templates
+│   │   │   │   │   ├── account-deletion.hbs
+│   │   │   │   │   ├── email-verification.hbs
+│   │   │   │   │   ├── layout.hbs
+│   │   │   │   │   ├── password-changed.hbs
+│   │   │   │   │   ├── password-reset.hbs
+│   │   │   │   │   ├── security-alert.hbs
+│   │   │   │   │   └── two-factor-setup.hbs
+│   │   │   │   └── welcome-email.hbs
 │   │   │   ├── exceptions
 │   │   │   │   ├── base.exception.ts
 │   │   │   │   └── index.ts
@@ -104,7 +122,8 @@ juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "n
 │   │   │   │   └── transform.interceptor.ts
 │   │   │   ├── interfaces
 │   │   │   │   ├── email-config.interface.ts
-│   │   │   │   └── index.ts
+│   │   │   │   ├── index.ts
+│   │   │   │   └── user.interface.ts
 │   │   │   ├── logging
 │   │   │   │   ├── constants.ts
 │   │   │   │   ├── index.ts
@@ -167,8 +186,7 @@ juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "n
 │   │   │       │   └── update-user.dto.ts
 │   │   │       ├── interfaces
 │   │   │       │   ├── index.ts
-│   │   │       │   ├── token.interface.ts
-│   │   │       │   └── user.interface.ts
+│   │   │       │   └── token.interface.ts
 │   │   │       ├── repositories
 │   │   │       │   ├── index.ts
 │   │   │       │   └── user.repository.ts
@@ -186,6 +204,7 @@ juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "n
 │   │   │   │   └── websocket.controller.ts
 │   │   │   ├── crypto.module.ts
 │   │   │   ├── dto
+│   │   │   │   ├── get-asset-info.dto.ts
 │   │   │   │   ├── get-prices.dto.ts
 │   │   │   │   └── index.ts
 │   │   │   ├── index.ts
@@ -234,31 +253,51 @@ juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "n
 │   │   │       ├── redis.module.ts
 │   │   │       └── redis.service.ts
 │   │   └── tsconfig.json
-│   └── portfolio
+│   ├── portfolio
+│   │   ├── src
+│   │   │   ├── controllers
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── portfolio.controller.ts
+│   │   │   │   └── transaction.controller.ts
+│   │   │   ├── dto
+│   │   │   │   ├── create-asset.dto.ts
+│   │   │   │   ├── create-portfolio.dto.ts
+│   │   │   │   ├── create-transaction.dto.ts
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── update-asset.dto.ts
+│   │   │   │   ├── update-portfolio.dto.ts
+│   │   │   │   └── update-transaction.dto.ts
+│   │   │   ├── index.ts
+│   │   │   ├── portfolio.module.ts
+│   │   │   ├── services
+│   │   │   │   ├── analytics.service.ts
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── portfolio.service.ts
+│   │   │   │   └── transaction.service.ts
+│   │   │   ├── types
+│   │   │   │   ├── index.ts
+│   │   │   │   └── portfolio.types.ts
+│   │   │   └── utils
+│   │   └── tsconfig.json
+│   └── watchlist
 │       ├── src
 │       │   ├── controllers
 │       │   │   ├── index.ts
-│       │   │   ├── portfolio.controller.ts
-│       │   │   └── transaction.controller.ts
+│       │   │   └── watchlist.controller.ts
 │       │   ├── dto
-│       │   │   ├── create-asset.dto.ts
-│       │   │   ├── create-portfolio.dto.ts
-│       │   │   ├── create-transaction.dto.ts
+│       │   │   ├── add-asset.dto.ts
+│       │   │   ├── create-watchlist.dto.ts
 │       │   │   ├── index.ts
-│       │   │   ├── update-asset.dto.ts
-│       │   │   ├── update-portfolio.dto.ts
-│       │   │   └── update-transaction.dto.ts
+│       │   │   └── update-watchlist.dto.ts
 │       │   ├── index.ts
-│       │   ├── portfolio.module.ts
 │       │   ├── services
-│       │   │   ├── analytics.service.ts
 │       │   │   ├── index.ts
-│       │   │   ├── portfolio.service.ts
-│       │   │   └── transaction.service.ts
+│       │   │   ├── watchlist-alert.service.ts
+│       │   │   └── watchlist.service.ts
 │       │   ├── types
 │       │   │   ├── index.ts
-│       │   │   └── portfolio.types.ts
-│       │   └── utils
+│       │   │   └── watchlist.types.ts
+│       │   └── watchlist.module.ts
 │       └── tsconfig.json
 ├── nest-cli.json
 ├── package.json
@@ -270,3 +309,5 @@ juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "n
 ├── tsconfig.build.json
 ├── tsconfig.json
 └── webpack.config.js
+
+81 directories, 228 files

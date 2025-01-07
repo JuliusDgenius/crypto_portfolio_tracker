@@ -3,6 +3,7 @@ import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { HttpExceptionFilter, AllExceptionsFilter } from './filters';
 import { LoggingInterceptor, TransformInterceptor } from './interceptors';
 import { ValidationPipe } from './pipes';
+import { EmailModule } from './email/email.module';
 
 @Global()
 @Module({
