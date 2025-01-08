@@ -7,6 +7,8 @@ import { WebSocketService } from './services/websocket.service';
 import { PriceUpdateJob } from './jobs/price-update.job';
 import { RedisModule } from '../../database/src';
 import { MarketController, PriceController } from './controllers';
+import { CryptoService } from './services/crypto.service';
+import { ExchangeRateService } from './services/exchange-rate.service';
 
 @Module({
   imports: [
@@ -18,7 +20,15 @@ import { MarketController, PriceController } from './controllers';
     }),
   ],
   controllers: [MarketController, PriceController],
-  providers: [PriceService, MarketService, WebSocketService, PriceUpdateJob],
-  exports: [PriceService, MarketService, WebSocketService],
+  providers: [
+    PriceService, MarketService,
+    WebSocketService, PriceUpdateJob,
+    CryptoService, ExchangeRateService
+  ],
+  exports: [
+    PriceService, MarketService,
+    WebSocketService, CryptoService,
+    ExchangeRateService
+  ],
 })
 export class CryptoModule {}

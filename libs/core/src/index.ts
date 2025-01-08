@@ -20,3 +20,4 @@ export * from './base/base.entity';
 
 // Exchange account
 export * from './exchange-account';
+export * from './exchange-account/exchange-account.controller';

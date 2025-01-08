@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, ConflictException } from '@nestjs/common
 import { PrismaService } from '../../../database/src';
 import { CreateExchangeAccountDTO } from './dto/create-exchange-account.dto';
 import { ExchangeAccount } from '@prisma/client';
-import { PriceService, WebSocketService, MarketService } from '../../../crypto/src'; // Assume this exists for API interactions
+import { CryptoService, MarketService, WebSocketService, PriceService } from '../../../crypto/src'; // Assume this exists for API interactions
 
 @Injectable()
 export class ExchangeAccountService {
@@ -11,6 +11,7 @@ export class ExchangeAccountService {
     private priceService: PriceService,
     private readonly marketService: MarketService,
     private readonly websocketService: WebSocketService,
+    private readonly cryptoService: CryptoService
   ) {}
 
   async create(userId: string, dto: CreateExchangeAccountDTO): Promise<ExchangeAccount> {
@@ -79,7 +80,7 @@ export class ExchangeAccountService {
     }
 
     // Fetch latest data from exchange
-    await this.marketService.syncExchangeData(account);
+    await this.cryptoService.syncExchangeData(account);
 
     // Update last sync timestamp
     await this.prisma.exchangeAccount.update({
