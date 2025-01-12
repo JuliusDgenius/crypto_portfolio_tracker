@@ -109,6 +109,15 @@
       "compilerOptions": {
         "tsConfigPath": "libs/watchlist/tsconfig.json"
       }
+    },
+    "libs/alerts": {
+      "type": "library",
+      "root": "libs/libs/alerts",
+      "entryFile": "index",
+      "sourceRoot": "libs/libs/alerts/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/libs/alerts/tsconfig.lib.json"
+      }
     }
   }
 }

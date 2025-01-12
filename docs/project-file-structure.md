@@ -1,4 +1,4 @@
-uliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "node_modules"
+juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "node_modules"
 .
 ├── apps
 │   └── api
@@ -21,9 +21,15 @@ uliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "no
 ├── dist
 │   └── apps
 │       └── api
-│           ├── main.4cf55f1af54a5504c2b6.hot-update.js
-│           ├── main.4cf55f1af54a5504c2b6.hot-update.json
-│           └── main.js
+│           ├── main.js
+│           └── templates
+│               ├── account-deletion.hbs
+│               ├── email-verification.hbs
+│               ├── layout.hbs
+│               ├── password-changed.hbs
+│               ├── password-reset.hbs
+│               ├── security-alert.hbs
+│               └── two-factor-setup.hbs
 ├── docker-compose.yml
 ├── Dockerfile.dev
 ├── docs
@@ -96,7 +102,8 @@ uliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "no
 │   │   │   │   └── welcome-email.hbs
 │   │   │   ├── exceptions
 │   │   │   │   ├── base.exception.ts
-│   │   │   │   └── index.ts
+│   │   │   │   ├── index.ts
+│   │   │   │   └── refresh-token.exceptions.ts
 │   │   │   ├── filters
 │   │   │   │   ├── all-exceptions.filter.ts
 │   │   │   │   ├── http-exception.filter.ts
@@ -162,6 +169,16 @@ uliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "no
 │   │   │   │   ├── crypto-asset.entity.ts
 │   │   │   │   ├── index.ts
 │   │   │   │   └── user.entity.ts
+│   │   │   ├── exchange-account
+│   │   │   │   ├── dto
+│   │   │   │   │   ├── create-exchange-account.dto.ts
+│   │   │   │   │   └── index.ts
+│   │   │   │   ├── exchange-account.controller.ts
+│   │   │   │   ├── exchange-account.service.ts
+│   │   │   │   ├── index.ts
+│   │   │   │   └── types
+│   │   │   │       ├── exchange.types.ts
+│   │   │   │       └── index.ts
 │   │   │   ├── index.ts
 │   │   │   ├── interfaces
 │   │   │   │   ├── base.interface.d.ts
@@ -217,6 +234,8 @@ uliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "no
 │   │   │   ├── jobs
 │   │   │   │   └── price-update.job.ts
 │   │   │   └── services
+│   │   │       ├── crypto.service.ts
+│   │   │       ├── exchange-rate.service.ts
 │   │   │       ├── index.ts
 │   │   │       ├── market.service.ts
 │   │   │       ├── price.service.ts
@@ -309,5 +328,3 @@ uliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "no
 ├── tsconfig.build.json
 ├── tsconfig.json
 └── webpack.config.js
-
-81 directories, 228 files

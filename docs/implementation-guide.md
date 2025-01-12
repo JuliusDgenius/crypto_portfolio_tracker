@@ -412,4 +412,70 @@ This implementation guide ensures:
 4. Scalable and maintainable code structure
 5. Efficient data flow and state management
 
-Would you like me to elaborate on any specific part of the implementation?
+Based on the provided Prisma schema for a cryptocurrency portfolio tracker, here's a detailed user story:
+
+---
+
+### User Story: Cryptocurrency Portfolio Tracker
+
+#### Persona:  
+Name: Alex  
+Role: Cryptocurrency Investor  
+Goals: Monitor and optimize cryptocurrency investments, track portfolio performance, and receive timely alerts about significant changes in the market.
+
+---
+
+#### As Alex, I want to:
+
+1. Register and Set Preferences:  
+   - Create an account using my email and password.  
+   - Upload a profile picture and set preferences such as display currency, theme (dark/light), and notification preferences.  
+   - Enable two-factor authentication for added security.  
+   - Verify my email address to activate the account.
+
+2. Manage My Portfolio:  
+   - Create multiple portfolios to organize my investments (e.g., "Long-Term Investments," "Day Trading").  
+   - Add a description and name for each portfolio.  
+   - View the total value of my portfolios, including profit/loss summaries for different timeframes (e.g., day, week, month).  
+   - Track historical data of portfolio performance.
+
+3. Add and Track Assets:  
+   - Add assets like Bitcoin (BTC), Ethereum (ETH), and others, specifying the quantity and average buy price.  
+   - Automatically update the current price and calculate metrics such as value, profit/loss, and allocation percentage within the portfolio.  
+   - Maintain a history of transactions, including buys, sells, and transfers.  
+   - Associate transactions with wallets or exchanges for accurate tracking.  
+
+4. Receive Alerts:  
+   - Set alerts for price changes (e.g., notify me if BTC drops below $30,000).  
+   - Configure alerts for portfolio thresholds (e.g., notify if total value drops by 5% in a day).  
+   - Choose how to receive alerts (email, push notification, SMS).
+
+5. Use a Watchlist:  
+   - Create a watchlist to monitor specific cryptocurrencies.  
+   - Add details like name and description to organize watchlists by purpose (e.g., "Potential Buys," "High Risk").  
+   - Link watchlists with assets for quick access to price updates.
+
+6. Integrate Exchange Accounts:  
+   - Connect API keys from exchanges (e.g., Binance, Coinbase).  
+   - Sync transactions automatically and keep my portfolio updated with real-time data.  
+   - Toggle account activity status to pause syncing if needed.  
+
+7. Analyze Data:  
+   - View charts and visualizations of portfolio performance.  
+   - Compare daily, weekly, and monthly trends in portfolio value.  
+   - Access historical data snapshots to evaluate investment decisions.
+
+8. Ensure Security and Scalability:  
+   - Manage refresh tokens for secure sessions across devices.  
+   - Invalidate sessions remotely if security is compromised.  
+   - Safeguard sensitive data like API keys and ensure they are encrypted.
+
+---
+
+#### Acceptance Criteria:
+- Users can manage multiple portfolios with detailed metrics.
+- Real-time data syncing from exchanges is seamless and secure.
+- Alerts trigger under predefined conditions and notify users as configured.
+- Historical and live data provide actionable insights into investment performance.
+- Users can enable advanced security features, including two-factor authentication.
+

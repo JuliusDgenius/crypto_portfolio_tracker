@@ -5,6 +5,7 @@ import { PortfolioModule } from '../../../libs/portfolio/src';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { WatchlistModule } from '../../../libs/watchlist/src';
+import { AlertsModule } from '../../../libs/alerts/src';
 import emailConfig from '../../../libs/common/src/email/config/email.config';
 import * as Joi from 'joi';
 
@@ -31,7 +32,8 @@ import * as Joi from 'joi';
     AuthModule,
     CryptoModule,
     PortfolioModule,
-    WatchlistModule
+    WatchlistModule,
+    AlertsModule,
   ],
 })
 export class AppModule {}

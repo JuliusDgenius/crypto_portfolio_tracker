@@ -19,6 +19,12 @@
       ],
       "@libs/watchlist/*": [
         "libs/watchlist/src/*"
+      ],
+      "libs/libs/alerts": [
+        "libs/libs/alerts/src"
+      ],
+      "libs/libs/alerts/*": [
+        "libs/libs/alerts/src/*"
       ]
     }
   },

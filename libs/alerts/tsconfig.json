@@ -1,0 +1,45 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // Module and compilation settings
+    "module": "commonjs",
+    "target": "es2017",
+    "moduleResolution": "node",
+    
+    // Output settings
+    "outDir": "../../dist/libs/alerts",
+    "rootDir": "src",
+    "declaration": true,
+    "sourceMap": true,
+    
+    // Build optimization
+    "tsBuildInfoFile": "../../dist/libs/alerts/tsconfig.tsbuildinfo",
+    "composite": true,
+    "incremental": true,
+    
+    // Type checking and generation
+    "removeComments": true,
+    "allowSyntheticDefaultImports": true,
+    "types": ["node"],
+    
+    // Path resolution
+    "baseUrl": "./",
+  },
+  // File handling
+  "include": ["src/**/*"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "test",
+    "**/*.spec.ts",
+    "**/*.test.ts"
+  ],
+  // Library dependencies
+  "references": [
+    {"path": "../common"},
+    {"path": "../database"},
+    {"path": "../core"},
+    {"path": "../watchlist"},
+    {"path": "../portfolio"}
+  ]
+}
