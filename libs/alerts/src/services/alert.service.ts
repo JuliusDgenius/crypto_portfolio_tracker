@@ -14,6 +14,9 @@ import {
   isValidAlert
 } from '../types'
 
+/**
+ * Service for managing alerts.
+ */
 @Injectable()
 export class AlertsService {
   private readonly logger = new Logger(AlertsService.name);
@@ -25,7 +28,13 @@ export class AlertsService {
   ) {}
 
   /**
-   * Create a new alert based on provided conditions
+   * Create a new alert based on provided conditions.
+   * @param userId - The ID of the user creating the alert.
+   * @param type - The type of the alert.
+   * @param conditions - The conditions that trigger the alert.
+   * @param notification - The notification settings for the alert.
+   * @returns A promise that resolves to the created alert.
+   * @throws Error if the alert conditions are invalid or the created alert does not match expected structure.
    */
   async createAlert(
     userId: string,
@@ -68,7 +77,9 @@ export class AlertsService {
   }
 
   /**
-   * Process all active alerts
+   * Process all active alerts.
+   * @returns A promise that resolves when all active alerts have been processed.
+   * @throws Error if there is an error processing active alerts.
    */
   async processActiveAlerts(): Promise<void> {
     try {
@@ -95,7 +106,12 @@ export class AlertsService {
   }
 
   /**
-   * Update alert status
+   * Update alert status.
+   * @param alertId - The ID of the alert to update.
+   * @param userId - The ID of the user who owns the alert.
+   * @param status - The new status for the alert.
+   * @returns A promise that resolves to the updated alert.
+   * @throws Error if the updated alert does not match expected structure.
    */
   async updateAlertStatus(
     alertId: string,
@@ -128,7 +144,11 @@ export class AlertsService {
   }
 
   /**
-   * Get alerts for a user with optional filters
+   * Get alerts for a user with optional filters.
+   * @param userId - The ID of the user whose alerts are to be fetched.
+   * @param filters - Optional filters for fetching alerts.
+   * @returns A promise that resolves to an array of alerts.
+   * @throws Error if there is an error fetching user alerts.
    */
   async getUserAlerts(
     userId: string,
@@ -175,7 +195,9 @@ export class AlertsService {
   }
 
   /**
-   * Convert Prisma Alert to our domain Alert type
+   * Convert Prisma Alert to our domain Alert type.
+   * @param prismaAlert - The Prisma alert object to convert.
+   * @returns The converted alert in the domain format.
    */
   private convertPrismaAlertToDomain(prismaAlert: any): Alert {
     return {

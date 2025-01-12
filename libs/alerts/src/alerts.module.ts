@@ -9,6 +9,7 @@ import { SystemAlertProcessor } from './processors';
 import { DatabaseModule } from '../../database/src';
 import { ConfigModule } from '@nestjs/config';
 import { MailerModule } from '@nestjs-modules/mailer';
+import { PriceAlertsController } from './controllers';
 
 @Module({
     imports: [
@@ -45,6 +46,7 @@ import { MailerModule } from '@nestjs-modules/mailer';
       PortfolioAlertProcessor,
       SystemAlertProcessor,
     ],
-    exports: [AlertsService],
+    controllers: [PriceAlertsController],
+    exports: [AlertsService, AlertProcessorService, NotificationService],
   })
   export class AlertsModule {}
