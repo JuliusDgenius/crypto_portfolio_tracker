@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import * as Handlebars from 'handlebars';
 import { MailerService } from '@nestjs-modules/mailer';
 import { PrismaService } from '../../../database/src';
 import {
@@ -7,8 +8,10 @@ import {
   NotificationContent,
   AlertNotification,
   NotificationDeliveryStatus,
+  NotificationPreferences,
 } from '../interfaces';
 import { Alert } from '../types';
+import { templateHelpers } from '../helpers/template.helpers';
 
 /**
  * Service for managing and sending alert notifications.
@@ -21,7 +24,9 @@ export class NotificationService {
     private readonly mailerService: MailerService,
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
-  ) {}
+  ) {
+    this.registerTemplateHelpers();
+  }
 
   /**
    * Creates and sends notifications for an alert through configured channels.
@@ -78,6 +83,11 @@ export class NotificationService {
       PRICE: {
         subject: 'Price Alert Triggered',
         bodyTemplate: 'The price has reached ${price} for ${symbol}',
+        data: {
+          ...alert.conditions,
+          currentPrice: alert.conditions.currentPrice,  // Make sure price is included
+          targetPrice: alert.conditions.targetPrice
+        }
       },
       VOLUME: {
         subject: 'Volume Alert Triggered',
@@ -167,6 +177,18 @@ export class NotificationService {
     return deliveryStatus;
   }
 
+  private registerTemplateHelpers(): void {
+    try {
+      Object.entries(templateHelpers).forEach(([name, helper]) => {
+        Handlebars.registerHelper(name, helper);
+        this.logger.debug(`Registered template helper: ${name}`);
+      });
+    } catch (error) {
+      this.logger.error('Failed to register template helpers', error.stack);
+      throw new Error('Template helper registration failed');
+    }
+  }
+
   /**
    * Sends notification via email.
    * @param {AlertNotification} notification - The notification to be sent via email.
@@ -174,16 +196,52 @@ export class NotificationService {
    */
   private async sendEmail(notification: AlertNotification): Promise<void> {
     const { alert, content } = notification;
-    
-    await this.mailerService.sendMail({
-      to: await this.getUserEmail(alert.userId),
-      subject: content.subject,
-      template: `alert-${alert.type.toLowerCase()}`,
-      context: {
-        ...content.data,
+    const userEmail = await this.getUserEmail(alert.userId);
+
+    try {
+      const templateName = `alerts/alert-${alert.type.toLowerCase()}`;
+
+      // Prepare email context with additional metadata
+      const emailContext = {
+        data: content.data,
+        currentPrice: content.data.currentPrice,
+        targetPrice: content.data.targetPrice,
         alert,
-      },
-    });
+        triggeredAt: new Date(),
+        notificationPreferences: alert.notification as NotificationPreferences,
+      };
+
+      console.log('Email context being sent to template:', emailContext);
+
+
+      await this.mailerService.sendMail({
+        to: userEmail,
+        subject: content.subject,
+        template: templateName,
+        context: emailContext,
+      })
+
+      // Log successful email delivery
+      // await this.logEmailDelivery({
+      //   userId: alert.userId,
+      //   alertId: alert.id,
+      //   email: userEmail,
+      //   templateName,
+      //   status: 'DELIVERED',
+      // });
+    } catch (error) {
+      // Log failed email delivery
+      // await this.logEmailDelivery({
+      //   userId: alert.userId,
+      //   alertId: alert.id,
+      //   email: userEmail,
+      //   templateName: `alert-${alert.type.toLowerCase()}`,
+      //   status: 'FAILED',
+      //   error: error.message,
+      // });
+      
+      throw error;
+    }
   }
 
   /**
@@ -261,4 +319,13 @@ export class NotificationService {
       this.logger.warn('Failed deliveries:', errors);
     }
   }
+
+  // private async logEmailDelivery(data: EmailDeliveryLog): Promise<void> {
+  //   await this.prisma.notificationDelivery.create({
+  //     data: {
+  //       channel: 'EMAIL',
+  //       ...data,
+  //     },
+  //   });
+  // }
 }

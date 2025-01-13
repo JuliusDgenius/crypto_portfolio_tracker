@@ -71,6 +71,11 @@ module.exports = (options, webpack) => {
             from: path.join(rootDir, 'libs/common/src/email/templates'),
             to: path.join(rootDir, 'dist/apps/api/templates'),
             noErrorOnMissing: true,
+          },
+          {
+            from: path.join(rootDir, 'libs/alerts/src/templates'),
+            to: path.join(rootDir, 'dist/apps/api/templates/alerts'),
+            noErrorOnMissing: true,
           }
         ]
       })

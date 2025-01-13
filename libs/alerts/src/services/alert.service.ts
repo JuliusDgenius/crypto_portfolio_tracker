@@ -136,7 +136,11 @@ export class AlertsService {
         throw new Error('Updated alert does not match expected structure');
       }
 
-      return updatedAlert;
+      if (status === AlertStatus.TRIGGERED) {
+        await this.notificationService.sendAlertNotifications(updatedAlert);
+      }
+      
+      return updatedAlert;  
     } catch (error) {
       this.logger.error(`Error updating alert status: ${error.message}`, error.stack);
       throw error;
