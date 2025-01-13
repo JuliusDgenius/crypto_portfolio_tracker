@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        .alert-container {
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .price-highlight {
+            color: #2196F3;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="alert-container">
+        <h2>Price Alert Triggered</h2>
+        <p>Your price alert for {{data.cryptocurrency}} has been triggered.</p>
+        <p>Current Price: <span class="price-highlight">{{formatPrice data.currentPrice}}</span></p>
+        <p>Target Price: {{formatPrice data.targetPrice}}</p>
+        <p>Condition: Price went {{toLowerCase data.comparison}} target</p>
+        <p>Triggered at: {{formatDate triggeredAt}}</p>
+        <hr>
+        <p><small>You received this email because you set up a price alert in your crypto portfolio.</small></p>
+    </div>
+</body>
+</html>

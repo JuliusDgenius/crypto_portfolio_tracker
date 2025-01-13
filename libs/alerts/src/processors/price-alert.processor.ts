@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../database/src';
+import { PriceService } from '../../../crypto/src';
 import { 
   PriceAlertCondition,
   ConditionEvaluationResult 
@@ -9,7 +10,10 @@ import {
 export class PriceAlertProcessor {
   private readonly logger = new Logger(PriceAlertProcessor.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly priceService: PriceService,
+  ) {}
 
   /**
    * Validates the conditions for a price alert before it's created
@@ -58,6 +62,7 @@ export class PriceAlertProcessor {
     try {
       // Fetch current price from your price feed service
       const currentPrice = await this.getCurrentPrice(conditions.cryptocurrency);
+      console.log('Retrieved current price:', currentPrice);
 
       // Determine if the alert should be triggered based on the comparison
       const isTriggered = conditions.comparison === 'ABOVE'
@@ -71,6 +76,7 @@ export class PriceAlertProcessor {
         metadata: {
           cryptocurrency: conditions.cryptocurrency,
           targetPrice: conditions.price,
+          currentPrice: currentPrice,
           comparison: conditions.comparison
         }
       };
@@ -112,20 +118,15 @@ export class PriceAlertProcessor {
     try {
       // This is a placeholder implementation
       // In a real system, you would fetch this from your price feed service
-      const latestPrice = await this.prisma.asset.findFirst({
-        where: {
-          symbol: cryptocurrency.toUpperCase()
-        },
-        select: {
-          currentPrice: true
-        }
-      });
+      const latestPrice = await this.priceService.getAssetInfo(cryptocurrency);
+      this.logger.debug(`LatestPrice ${latestPrice.price}`);
 
-      if (!latestPrice?.currentPrice) {
+      if (!latestPrice?.price) {
+        this.logger.error(`Error fetching current price`);
         throw new Error(`No price data available for ${cryptocurrency}`);
       }
 
-      return latestPrice.currentPrice;
+      return latestPrice.price;
     } catch (error) {
       this.logger.error('Error fetching current price', error.stack);
       throw new Error(`Failed to fetch price for ${cryptocurrency}: ${error.message}`);
