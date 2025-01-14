@@ -1,4 +1,3 @@
-// libs/database/src/redis/redis.module.ts
 import { DynamicModule, Module } from '@nestjs/common';
 import { RedisService } from './redis.service';
 import { REDIS_OPTIONS } from './redis.constants';

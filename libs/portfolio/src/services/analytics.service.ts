@@ -1,7 +1,6 @@
-// libs/portfolio/src/services/analytics.service.ts
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../database/src';
-import { PerformanceMetrics } from 'src/types/portfolio.types';
+import { PerformanceMetrics } from '../types/portfolio.types';
 
 @Injectable()
 export class AnalyticsService {
@@ -70,7 +69,7 @@ export class AnalyticsService {
       where: { portfolioId },
       orderBy: { date: 'asc' },
     });
-    return firstTransaction ? firstTransaction.amount * firstTransaction.price : 0;
+    return firstTransaction ? firstTransaction.amount * firstTransaction.pricePerUnit : 0;
   }
 
   private calculatePercentageChange(

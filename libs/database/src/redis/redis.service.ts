@@ -41,7 +41,7 @@ export class RedisService implements OnModuleDestroy {
   }
 
 
-  async zadd(key, score, number) {
+  async zadd(key: string, score: number, number: number) {
     try {
       const result = await this.client.zadd(key, score, number);
     } catch(error) {
