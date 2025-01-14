@@ -21,9 +21,13 @@ juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "n
 ├── dist
 │   └── apps
 │       └── api
+│           ├── main.4fa35c06e0016b62fe16.hot-update.js
+│           ├── main.4fa35c06e0016b62fe16.hot-update.json
 │           ├── main.js
 │           └── templates
 │               ├── account-deletion.hbs
+│               ├── alerts
+│               │   └── alert-price.hbs
 │               ├── email-verification.hbs
 │               ├── layout.hbs
 │               ├── password-changed.hbs
@@ -41,6 +45,44 @@ juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "n
 │   └── project-file-structure.md
 ├── jest.config.ts
 ├── libs
+│   ├── alerts
+│   │   ├── src
+│   │   │   ├── alerts.module.ts
+│   │   │   ├── alert.validator.ts
+│   │   │   ├── controllers
+│   │   │   │   ├── index.ts
+│   │   │   │   └── price-alert.controller.ts
+│   │   │   ├── dto
+│   │   │   │   ├── alert-response.dto.ts
+│   │   │   │   ├── create-price-alert.dto.ts
+│   │   │   │   ├── get-price-alert.dto.ts
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── notification-preferences.dto.ts
+│   │   │   │   └── update-alert.dto.ts
+│   │   │   ├── helpers
+│   │   │   │   └── template.helpers.ts
+│   │   │   ├── index.ts
+│   │   │   ├── interfaces
+│   │   │   │   ├── alert-conditions.interface.ts
+│   │   │   │   ├── alert-notification.interface.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── processors
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── portfolio-alert.processor.ts
+│   │   │   │   ├── price-alert.processor.ts
+│   │   │   │   └── system-alert.processor.ts
+│   │   │   ├── services
+│   │   │   │   ├── alert.mapper.ts
+│   │   │   │   ├── alert-notification.service.ts
+│   │   │   │   ├── alert-processor.service.ts
+│   │   │   │   ├── alert.service.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── templates
+│   │   │   │   └── alert-price.hbs
+│   │   │   └── types
+│   │   │       ├── alert.type.ts
+│   │   │       └── index.ts
+│   │   └── tsconfig.json
 │   ├── auth
 │   │   ├── src
 │   │   │   ├── auth.module.ts
@@ -275,11 +317,13 @@ juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "n
 │   ├── portfolio
 │   │   ├── src
 │   │   │   ├── controllers
+│   │   │   │   ├── historical-data.controller.ts
 │   │   │   │   ├── index.ts
 │   │   │   │   ├── portfolio.controller.ts
 │   │   │   │   └── transaction.controller.ts
 │   │   │   ├── dto
 │   │   │   │   ├── create-asset.dto.ts
+│   │   │   │   ├── create-historical-data.dto.ts
 │   │   │   │   ├── create-portfolio.dto.ts
 │   │   │   │   ├── create-transaction.dto.ts
 │   │   │   │   ├── index.ts
@@ -287,9 +331,15 @@ juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "n
 │   │   │   │   ├── update-portfolio.dto.ts
 │   │   │   │   └── update-transaction.dto.ts
 │   │   │   ├── index.ts
+│   │   │   ├── interfaces
+│   │   │   │   ├── asset-snapshot.interface.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── jobs
+│   │   │   │   └── historical-data-updates.job.ts
 │   │   │   ├── portfolio.module.ts
 │   │   │   ├── services
 │   │   │   │   ├── analytics.service.ts
+│   │   │   │   ├── historial.service.ts
 │   │   │   │   ├── index.ts
 │   │   │   │   ├── portfolio.service.ts
 │   │   │   │   └── transaction.service.ts
@@ -328,3 +378,5 @@ juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "n
 ├── tsconfig.build.json
 ├── tsconfig.json
 └── webpack.config.js
+
+98 directories, 280 files
