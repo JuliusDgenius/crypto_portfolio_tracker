@@ -84,4 +84,16 @@ export class PriceAlertsController {
       updateStatusDto.status
     );
   }
+
+  @Post('process')
+  async processAlerts() {
+    console.log('API: process alerts endpoint called');
+    try {
+      await this.alertsService.processActiveAlerts();
+      return { success: true, message: 'Alerts processed successfully' };
+    } catch (error) {
+      console.error('API ERROR:', error);
+      throw error;
+    }
+  }
 }

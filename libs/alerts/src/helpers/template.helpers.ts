@@ -3,6 +3,10 @@ export const templateHelpers = {
     console.log('Price value received in helper:', price);
     console.log('Type of price:', typeof price);
 
+    if (price < 0) {
+      return 'Price cannot be negative';
+    }
+
     // Check if price is null, undefined, or NaN
     if (price === null || price === undefined || Number.isNaN(price)) {
       console.log('Price validation failed - null/undefined/NaN check');

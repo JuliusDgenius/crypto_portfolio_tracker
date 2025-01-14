@@ -85,8 +85,8 @@ export class NotificationService {
         bodyTemplate: 'The price has reached ${price} for ${symbol}',
         data: {
           ...alert.conditions,
-          currentPrice: alert.conditions.currentPrice,  // Make sure price is included
-          targetPrice: alert.conditions.targetPrice
+          currentPrice: alert.conditions.currentPrice,
+          targetPrice: alert.conditions.targetPrice || alert.conditions.price
         }
       },
       VOLUME: {
@@ -103,8 +103,8 @@ export class NotificationService {
 
     return {
       subject: template.subject,
-      body: this.interpolateTemplate(template.bodyTemplate, alert.conditions),
-      data: alert.conditions,
+      body: this.interpolateTemplate(template.bodyTemplate, template.data),
+      data: template.data,
     };
   }
 
@@ -205,7 +205,7 @@ export class NotificationService {
       const emailContext = {
         data: content.data,
         currentPrice: content.data.currentPrice,
-        targetPrice: content.data.targetPrice,
+        targetPrice: content.data.targetPrice || content.data.price,
         alert,
         triggeredAt: new Date(),
         notificationPreferences: alert.notification as NotificationPreferences,

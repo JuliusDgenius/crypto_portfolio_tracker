@@ -339,13 +339,17 @@ export class PriceService {
  * @throws Error if the asset information cannot be retrieved
  */
 async getAssetInfo(symbol: string): Promise<IAssetInfo> {
+  this.logger.debug(`Getting asset info for ${symbol}`);
   const cacheKey = `${this.cacheConfig.currentPrice.prefix}info:${symbol}`;
   
   // Check cache first
   const cachedInfo = await this.redisService.get(cacheKey);
   if (cachedInfo) {
+    this.logger.debug(`Retrieved cached info for ${symbol}:`, cachedInfo);
     return JSON.parse(cachedInfo);
   }
+
+  this.logger.debug(`Cache miss for ${symbol}, fetching from API`);
 
   try {
     // Make a focused API call to get just what we need
@@ -369,6 +373,11 @@ async getAssetInfo(symbol: string): Promise<IAssetInfo> {
       )
     );
 
+    this.logger.debug(`API response for ${symbol}:`, {
+      name: data.name,
+      price: data.market_data?.current_price?.usd
+    });
+    
     const assetInfo: IAssetInfo = {
       name: data.name,
       symbol: data.symbol.toUpperCase(),

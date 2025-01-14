@@ -27,8 +27,27 @@ export class AlertProcessorService {
    */
   async processAlert(alert: Alert): Promise<boolean> {
     try {
+      this.logger.error('DIAGNOSTIC: Processing alert', {
+        alertId: alert.id,
+        alertType: alert.type,
+        conditions: alert.conditions
+      });
+
       // Evaluate alert conditions
       const result = await this.evaluateAlertConditions(alert.conditions as AlertCondition);
+
+    this.logger.error('DIAGNOSTIC: Alert processing result', {
+      alertId: alert.id,
+      isTriggered: result.isTriggered
+    });
+
+      if (result.isTriggered) {
+       alert.conditions ={
+        ...alert.conditions,
+        currentPrice: result.currentValue,
+        evaluatedAt: result.triggeredAt
+       } 
+      }
 
       return result.isTriggered;
     } catch (error) {
@@ -42,6 +61,15 @@ export class AlertProcessorService {
    */
   async validateAlertConditions(conditions: AlertCondition): Promise<boolean> {
     try {
+
+      this.logger.error('DIAGNOSTIC: Evaluating conditions', {
+        conditionType: conditions.type,
+        isPriceAlert: isPriceAlertCondition(conditions),
+        isPortfolioAlert: isPortfolioAlertCondition(conditions),
+        isSystemAlert: isSystemAlertCondition(conditions),
+        rawConditions: conditions
+      });
+
       if (isPriceAlertCondition(conditions)) {
         return this.priceAlertProcessor.validateConditions(conditions);
       } else if (isPortfolioAlertCondition(conditions)) {
@@ -62,6 +90,7 @@ export class AlertProcessorService {
   private async evaluateAlertConditions(conditions: AlertCondition): Promise<ConditionEvaluationResult> {
     try {
       if (isPriceAlertCondition(conditions)) {
+        this.logger.error('DIAGNOSTIC: Routing to price alert processor');
         return this.priceAlertProcessor.evaluateConditions(conditions);
       } else if (isPortfolioAlertCondition(conditions)) {
         return this.portfolioAlertProcessor.evaluateConditions(conditions);

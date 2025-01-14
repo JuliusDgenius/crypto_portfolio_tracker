@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../database/src';
 import { NotificationService } from './alert-notification.service'
@@ -18,14 +18,24 @@ import {
  * Service for managing alerts.
  */
 @Injectable()
-export class AlertsService {
+export class AlertsService implements OnModuleInit {
   private readonly logger = new Logger(AlertsService.name);
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly alertProcessorService: AlertProcessorService,
     private readonly notificationService: NotificationService,
-  ) {}
+  ) {
+    // Log when service is constructed
+    console.log('INIT: AlertsService constructor called');
+    this.logger.error('INIT: AlertsService constructor called');
+  }
+
+  async onModuleInit() {
+    // Log when module initializes
+    console.log('INIT: AlertsService module initialized');
+    this.logger.error('INIT: AlertsService module initialized');
+  }
 
   /**
    * Create a new alert based on provided conditions.
@@ -83,6 +93,8 @@ export class AlertsService {
    */
   async processActiveAlerts(): Promise<void> {
     try {
+      this.logger.error('DIAGNOSTIC: Starting to process active alerts');
+
       const prismaAlerts = await this.prisma.alert.findMany({
         where: { status: AlertStatus.ACTIVE }
       });
@@ -91,8 +103,18 @@ export class AlertsService {
       .map(this.convertPrismaAlertToDomain)
       .filter(isValidAlert)
 
+      this.logger.error('DIAGNOSTIC: Found active alerts', {
+        count: prismaAlerts.length,
+        alertIds: prismaAlerts.map(a => a.id)
+      });
+
       for (const alert of activeAlerts) {
         const isTriggered = await this.alertProcessorService.processAlert(alert);
+
+      this.logger.error('DIAGNOSTIC: Alert processing complete', {
+        alertId: alert.id,
+        isTriggered
+      });
         
         if (isTriggered) {
           await this.updateAlertStatus(alert.id, alert.userId, AlertStatus.TRIGGERED);
@@ -136,10 +158,6 @@ export class AlertsService {
         throw new Error('Updated alert does not match expected structure');
       }
 
-      if (status === AlertStatus.TRIGGERED) {
-        await this.notificationService.sendAlertNotifications(updatedAlert);
-      }
-      
       return updatedAlert;  
     } catch (error) {
       this.logger.error(`Error updating alert status: ${error.message}`, error.stack);

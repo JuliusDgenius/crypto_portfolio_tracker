@@ -22,14 +22,14 @@ export class PriceAlertProcessor {
   async validateConditions(conditions: PriceAlertCondition): Promise<boolean> {
     try {
       // Ensure required fields are present
-      if (!conditions.cryptocurrency || !conditions.price) {
+      if (!conditions.cryptocurrency || !conditions.targetPrice) {
         this.logger.warn('Missing required fields in price alert conditions');
         return false;
       }
 
       // Validate price is positive
-      if (conditions.price <= 0) {
-        this.logger.warn(`Invalid price value: ${conditions.price}`);
+      if (conditions.targetPrice <= 0) {
+        this.logger.warn(`Invalid price value: ${conditions.targetPrice}`);
         return false;
       }
 
@@ -60,14 +60,22 @@ export class PriceAlertProcessor {
    */
   async evaluateConditions(conditions: PriceAlertCondition): Promise<ConditionEvaluationResult> {
     try {
+      this.logger.debug('Starting condition evaluation with conditions:', conditions);
+
       // Fetch current price from your price feed service
       const currentPrice = await this.getCurrentPrice(conditions.cryptocurrency);
-      console.log('Retrieved current price:', currentPrice);
+      this.logger.debug(`Retrieved current price for ${conditions.cryptocurrency}: ${currentPrice}`);
 
       // Determine if the alert should be triggered based on the comparison
       const isTriggered = conditions.comparison === 'ABOVE'
-        ? currentPrice > conditions.price
-        : currentPrice < conditions.price;
+        ? currentPrice > conditions.targetPrice
+        : currentPrice < conditions.targetPrice;
+
+      this.logger.debug(`Alert evaluation result: ${isTriggered}`, {
+        currentPrice,
+        targetPrice: conditions.targetPrice,
+        comparison: conditions.comparison
+      });
 
       return {
         isTriggered,
@@ -75,7 +83,7 @@ export class PriceAlertProcessor {
         triggeredAt: new Date(),
         metadata: {
           cryptocurrency: conditions.cryptocurrency,
-          targetPrice: conditions.price,
+          targetPrice: conditions.targetPrice,
           currentPrice: currentPrice,
           comparison: conditions.comparison
         }
@@ -116,16 +124,20 @@ export class PriceAlertProcessor {
    */
   private async getCurrentPrice(cryptocurrency: string): Promise<number> {
     try {
+      this.logger.debug(`Fetching current price for ${cryptocurrency}`);
       // This is a placeholder implementation
       // In a real system, you would fetch this from your price feed service
       const latestPrice = await this.priceService.getAssetInfo(cryptocurrency);
-      this.logger.debug(`LatestPrice ${latestPrice.price}`);
+      this.logger.debug('Price service response:', latestPrice);
 
       if (!latestPrice?.price) {
-        this.logger.error(`Error fetching current price`);
+        this.logger.error(`No price data available for ${cryptocurrency}`, {
+          response: latestPrice
+        });
         throw new Error(`No price data available for ${cryptocurrency}`);
       }
 
+      this.logger.debug(`Successfully retrieved price: ${latestPrice.price}`);
       return latestPrice.price;
     } catch (error) {
       this.logger.error('Error fetching current price', error.stack);

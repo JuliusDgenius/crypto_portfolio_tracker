@@ -15,7 +15,8 @@ export interface BaseCondition {
 export interface PriceAlertCondition extends BaseCondition {
   type: AlertType.PRICE;
   cryptocurrency: string;
-  price: number;
+  targetPrice: number;
+  currentPrice?: number;
   comparison: 'ABOVE' | 'BELOW';
 }
 
