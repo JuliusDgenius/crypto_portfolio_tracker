@@ -21,8 +21,8 @@ juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "n
 ├── dist
 │   └── apps
 │       └── api
-│           ├── main.4fa35c06e0016b62fe16.hot-update.js
-│           ├── main.4fa35c06e0016b62fe16.hot-update.json
+│           ├── main.1d7a2ce5c96dba06f336.hot-update.js
+│           ├── main.1d7a2ce5c96dba06f336.hot-update.json
 │           ├── main.js
 │           └── templates
 │               ├── account-deletion.hbs
@@ -326,6 +326,7 @@ juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "n
 │   │   │   │   ├── create-historical-data.dto.ts
 │   │   │   │   ├── create-portfolio.dto.ts
 │   │   │   │   ├── create-transaction.dto.ts
+│   │   │   │   ├── get-historical-data.dto.ts
 │   │   │   │   ├── index.ts
 │   │   │   │   ├── update-asset.dto.ts
 │   │   │   │   ├── update-portfolio.dto.ts
@@ -333,9 +334,11 @@ juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "n
 │   │   │   ├── index.ts
 │   │   │   ├── interfaces
 │   │   │   │   ├── asset-snapshot.interface.ts
+│   │   │   │   ├── historical-data-point.interface.ts
 │   │   │   │   └── index.ts
 │   │   │   ├── jobs
-│   │   │   │   └── historical-data-updates.job.ts
+│   │   │   │   ├── historical-data-updates.job.ts
+│   │   │   │   └── index.ts
 │   │   │   ├── portfolio.module.ts
 │   │   │   ├── services
 │   │   │   │   ├── analytics.service.ts
@@ -379,4 +382,4 @@ juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "n
 ├── tsconfig.json
 └── webpack.config.js
 
-98 directories, 280 files
+98 directories, 283 files
