@@ -1,23 +1,25 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../database/src';
-import { PerformanceMetrics } from '../types/portfolio.types';
-
+import { HistoricalDataService } from './historial.service'; 
 @Injectable()
 export class AnalyticsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly historicalDataService: HistoricalDataService,
+  ) {}
 
   async calculateProfitLoss(portfolioId: string) {
     const [dayAgo, weekAgo, monthAgo, yearAgo] = this.getHistoricalDates();
 
-    const [dayData, weekData, monthData, yearData] = await Promise.all([
-      this.getHistoricalValue(portfolioId, dayAgo),
-      this.getHistoricalValue(portfolioId, weekAgo),
-      this.getHistoricalValue(portfolioId, monthAgo),
-      this.getHistoricalValue(portfolioId, yearAgo),
-    ]);
-
     const currentValue = await this.getCurrentPortfolioValue(portfolioId);
     const initialValue = await this.getInitialPortfolioValue(portfolioId);
+
+    const [dayData, weekData, monthData, yearData] = await Promise.all([
+      this.historicalDataService.getHistoricalValue(portfolioId, dayAgo),
+      this.historicalDataService.getHistoricalValue(portfolioId, weekAgo),
+      this.historicalDataService.getHistoricalValue(portfolioId, monthAgo),
+      this.historicalDataService.getHistoricalValue(portfolioId, yearAgo),
+    ]);
 
     return {
       day: this.calculatePercentageChange(dayData?.totalValue, currentValue),
@@ -28,9 +30,35 @@ export class AnalyticsService {
     };
   }
 
-  async calculatePerformanceMetrics(portfolioId: string): Promise<PerformanceMetrics> {
-    return
-  }
+    /**
+   * Calculates performance metrics for a portfolio
+   */
+    async calculatePerformanceMetrics(portfolioId: string) {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  
+      const historicalData = await this.historicalDataService.getPortfolioHistory(
+        portfolioId,
+        thirtyDaysAgo,
+        new Date(),
+        'daily'
+      );
+  
+      if (historicalData.length < 2) {
+        return {
+          change: 0,
+          percentageChange: 0,
+        };
+      }
+  
+      const firstValue = historicalData[0].totalValue;
+      const lastValue = historicalData[historicalData.length - 1].totalValue;
+  
+      return {
+        change: lastValue - firstValue,
+        percentageChange: ((lastValue - firstValue) / firstValue) * 100,
+      };
+    }
 
   private getHistoricalDates() {
     const now = new Date();
@@ -40,20 +68,6 @@ export class AnalyticsService {
       new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000), // 1 month ago
       new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000), // 1 year ago
     ];
-  }
-
-  private async getHistoricalValue(portfolioId: string, date: Date) {
-    return this.prisma.historicalData.findFirst({
-      where: {
-        portfolioId,
-        date: {
-          gte: date,
-        },
-      },
-      orderBy: {
-        date: 'asc',
-      },
-    });
   }
 
   private async getCurrentPortfolioValue(portfolioId: string): Promise<number> {

@@ -1,13 +1,12 @@
-// libs/portfolio/src/portfolio.module.ts
 import { Module } from '@nestjs/common';
 import { PortfolioService, TransactionService, AnalyticsService, HistoricalDataService } from './services';
 import { DatabaseModule } from '../../database/src';
-import { PortfolioController, TransactionController } from './controllers';
-import { HistoricalDataUpdateJob } from './jobs/historical-data-updates.job';
+import { PortfolioController, TransactionController, HistoricalDataController } from './controllers';
+import { HistoricalDataUpdateJob } from './jobs';
 
 @Module({
   imports: [DatabaseModule],
-  controllers: [PortfolioController, TransactionController],
+  controllers: [PortfolioController, TransactionController, HistoricalDataController],
   providers: [
     PortfolioService,
     TransactionService,
@@ -15,6 +14,6 @@ import { HistoricalDataUpdateJob } from './jobs/historical-data-updates.job';
     HistoricalDataService,
     HistoricalDataUpdateJob
   ],
-  exports: [PortfolioService, TransactionService, AnalyticsService],
+  exports: [PortfolioService, TransactionService, AnalyticsService, HistoricalDataService],
 })
 export class PortfolioModule {}

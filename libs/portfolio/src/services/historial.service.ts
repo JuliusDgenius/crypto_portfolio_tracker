@@ -14,13 +14,13 @@ export class HistoricalDataService {
   /**
    * Creates a new historical data point for a portfolio
    */
-  async createHistoricalDataPoint(data: CreateHistoricalDataDto) {
+  async createHistoricalDataPoint(createHistoricalDataDto: CreateHistoricalDataDto) {
     return this.prisma.historicalData.create({
       data: {
-        portfolioId: data.portfolioId,
-        date: data.date,
-        totalValue: data.totalValue,
-        assets: data.assets as unknown as JsonObject, // Stored as JSON
+        portfolioId: createHistoricalDataDto.portfolioId,
+        date: createHistoricalDataDto.date,
+        totalValue: createHistoricalDataDto.totalValue,
+        assets: createHistoricalDataDto.assets as unknown as JsonObject, // Stored as JSON
       },
     });
   }
@@ -50,6 +50,19 @@ export class HistoricalDataService {
     // Apply interval filtering if needed
     return this.filterByInterval(data, interval);
   }
+
+  async getHistoricalValue(portfolioId: string, date: Date) {
+    const data = await this.prisma.historicalData.findFirst({
+      where: {
+        portfolioId,
+        date: date,
+      },
+      select: {
+        totalValue: true,
+      },
+    });
+    return data;
+  } 
 
   /**
    * Filters historical data points based on the specified interval
@@ -85,41 +98,6 @@ export class HistoricalDataService {
 
       return false;
     });
-  }
-
-  /**
-   * Calculates performance metrics for a portfolio
-   */
-  async calculatePerformanceMetrics(portfolioId: string) {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    const historicalData = await this.prisma.historicalData.findMany({
-      where: {
-        portfolioId,
-        date: {
-          gte: thirtyDaysAgo,
-        },
-      },
-      orderBy: {
-        date: 'asc',
-      },
-    });
-
-    if (historicalData.length < 2) {
-      return {
-        change: 0,
-        percentageChange: 0,
-      };
-    }
-
-    const firstValue = historicalData[0].totalValue;
-    const lastValue = historicalData[historicalData.length - 1].totalValue;
-
-    return {
-      change: lastValue - firstValue,
-      percentageChange: ((lastValue - firstValue) / firstValue) * 100,
-    };
   }
 
   /**

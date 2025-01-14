@@ -1,15 +1,30 @@
 import { Controller, Get, Post, Query, Param, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../auth/src';
-import { HistoricalDataService } from '../services';
+import { HistoricalDataService, AnalyticsService } from '../services';
+import { GetPortfolioHistoryDto } from '../dto';
 
 @ApiTags('Historical Data')
-@Controller('portfolios/:portfolioId/history')
+@Controller('portfolios/:portfolioId/')
+@ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard)
 export class HistoricalDataController {
-  constructor(private readonly historicalDataService: HistoricalDataService) {}
+  constructor(
+    private readonly historicalDataService: HistoricalDataService,
+    private readonly analyticsService: AnalyticsService
+  ) {}
 
-  @Get()
+  @Get('profitLoss')
+  @ApiOperation({ summary: 'Get portfolio profit and Loss data' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Returns profitLoss data points for the specified portfolio' 
+  })
+  async getProfitLoss(@Param('portfolioId') portfolioId: string) {
+    return this.analyticsService.calculateProfitLoss(portfolioId)
+  }
+
+  @Get('history')
   @ApiOperation({ summary: 'Get portfolio historical data' })
   @ApiResponse({ 
     status: 200, 
@@ -25,23 +40,33 @@ export class HistoricalDataController {
   })
   async getPortfolioHistory(
     @Param('portfolioId') portfolioId: string,
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
-    @Query('interval') interval?: 'daily' | 'weekly' | 'monthly'
+    @Query() query: GetPortfolioHistoryDto  ,
   ) {
     // Default to last 30 days if no dates provided
-    const end = endDate ? new Date(endDate) : new Date();
-    const start = startDate 
-      ? new Date(startDate)
-      : new Date(end.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const end = query.endDate || new Date();
+    const start = query.startDate || new Date(query.endDate.getTime() - 30 * 24 * 60 * 60 * 1000);
 
     return this.historicalDataService.getPortfolioHistory(
       portfolioId,
       start,
       end,
-      interval || 'daily'
+      query.interval || 'daily'
     );
   }
+
+  @Get('historicalValue')
+  @ApiOperation({ summary: 'Get a single historical value for a portfolio on a specific date' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Returns the historical value for the specified portfolio and date' 
+  })
+  @ApiQuery({ name: 'date', required: true, type: Date })
+  async getHistoricalValue(
+    @Param('portfolioId') portfolioId: string,
+    @Query('date') date: string,
+  ) {
+    return this.historicalDataService.getHistoricalValue(portfolioId, new Date(date));
+  }  
 
   @Get('performance')
   @ApiOperation({ summary: 'Get portfolio performance metrics' })
@@ -52,7 +77,7 @@ export class HistoricalDataController {
   async getPerformanceMetrics(
     @Param('portfolioId') portfolioId: string
   ) {
-    return this.historicalDataService.calculatePerformanceMetrics(portfolioId);
+    return this.analyticsService.calculatePerformanceMetrics(portfolioId);
   }
 
   @Post('refresh')

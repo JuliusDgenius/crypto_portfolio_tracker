@@ -5,3 +5,4 @@ export * from './create-transaction.dto';
 export * from './create-asset.dto';
 export * from './update-asset.dto';
 export * from './create-historical-data.dto';
+export * from './get-historical-data.dto';
