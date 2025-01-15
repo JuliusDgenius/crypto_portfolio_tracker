@@ -1,28 +1,45 @@
 juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "node_modules"
 .
 ├── apps
-│   └── api
-│       ├── nest-cli.json
+│   ├── api
+│   │   ├── nest-cli.json
+│   │   ├── package.json
+│   │   ├── package-lock.json
+│   │   ├── README.md
+│   │   ├── src
+│   │   │   ├── app.module.ts
+│   │   │   ├── health
+│   │   │   │   ├── health.controller.ts
+│   │   │   │   └── health.module.ts
+│   │   │   └── main.ts
+│   │   ├── test
+│   │   │   ├── app.e2e-spec.ts
+│   │   │   ├── database-test.module.ts
+│   │   │   ├── health.e2e-spec.ts
+│   │   │   └── jest-e2e.json
+│   │   └── tsconfig.json
+│   └── frontend
+│       ├── eslint.config.js
+│       ├── index.html
 │       ├── package.json
-│       ├── package-lock.json
+│       ├── public
+│       │   └── vite.svg
 │       ├── README.md
 │       ├── src
-│       │   ├── app.module.ts
-│       │   ├── health
-│       │   │   ├── health.controller.ts
-│       │   │   └── health.module.ts
-│       │   └── main.ts
-│       ├── test
-│       │   ├── app.e2e-spec.ts
-│       │   ├── database-test.module.ts
-│       │   ├── health.e2e-spec.ts
-│       │   └── jest-e2e.json
-│       └── tsconfig.json
+│       │   ├── App.css
+│       │   ├── App.tsx
+│       │   ├── assets
+│       │   │   └── react.svg
+│       │   ├── index.css
+│       │   ├── main.tsx
+│       │   └── vite-env.d.ts
+│       ├── tsconfig.app.json
+│       ├── tsconfig.json
+│       ├── tsconfig.node.json
+│       └── vite.config.ts
 ├── dist
 │   └── apps
 │       └── api
-│           ├── main.1d7a2ce5c96dba06f336.hot-update.js
-│           ├── main.1d7a2ce5c96dba06f336.hot-update.json
 │           ├── main.js
 │           └── templates
 │               ├── account-deletion.hbs
@@ -382,4 +399,4 @@ juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker$ tree -I "n
 ├── tsconfig.json
 └── webpack.config.js
 
-98 directories, 283 files
+102 directories, 296 files

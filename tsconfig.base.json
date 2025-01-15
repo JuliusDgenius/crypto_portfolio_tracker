@@ -8,15 +8,18 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "importHelpers": true,
-    "target": "es2017",
+    "target": "es2020",
     "module": "CommonJS",
     "lib": ["es2020", "dom"],
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
+    "jsx": "react-jsx",
     "paths": {
       "@libs/*": ["libs/*/src"],  // Make this more flexible
-      "@apps/*": ["apps/*/src"]   // Added this for app imports
+      "@apps/*": ["apps/*/src"],   // Add this for app imports
+      "@frontend/*": ["apps/frontend/src/*"], // Add this for frontend imports
+      "@api/*": ["apps/api/src/*"]
     }
   },
   "exclude": ["node_modules", "tmp"]
