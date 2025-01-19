@@ -5,7 +5,7 @@ import path from 'path';
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 4200, // Different from your NestJS port
+    port: 3001, // Different from your NestJS port
     proxy: {
       // Match your NestJS routes
       '/api': {
