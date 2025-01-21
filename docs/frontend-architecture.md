@@ -420,3 +420,73 @@ interface IndicatorConfig {
   visible: boolean;
 }
 ```
+
+juliusdgenius@juliusdgenius:~/JuliusDgenius/crypto_portfolio_tracker/apps/frontend$ tree -I "node_modules"
+.
+├── eslint.config.js
+├── index.html
+├── package.json
+├── public
+├── README.md
+├── src
+│   ├── App.css
+│   ├── App.tsx
+│   ├── assets
+│   │   ├── icons
+│   │   └── images
+│   ├── components
+│   │   ├── charts
+│   │   ├── common
+│   │   │   ├── Button
+│   │   │   ├── Card
+│   │   │   ├── Input
+│   │   │   ├── Loading
+│   │   │   ├── Modal
+│   │   │   └── Table
+│   │   ├── layout
+│   │   │   ├── Footer
+│   │   │   ├── Header
+│   │   │   ├── MainLayout
+│   │   │   └── Sidebar
+│   │   ├── portfolio
+│   │   └── watchlist
+│   ├── contexts
+│   │   ├── AuthContext
+│   │   ├── PortfolioContext
+│   │   └── ThemeContext
+│   ├── features
+│   │   ├── auth
+│   │   │   ├── components
+│   │   │   ├── hooks
+│   │   │   ├── services
+│   │   │   └── types
+│   │   ├── portfolio
+│   │   │   ├── components
+│   │   │   ├── hooks
+│   │   │   ├── services
+│   │   │   └── types
+│   │   └── watchlist
+│   │       ├── components
+│   │       ├── hooks
+│   │       ├── services
+│   │       └── types
+│   ├── hooks
+│   ├── index.css
+│   ├── main.tsx
+│   ├── services
+│   │   ├── api
+│   │   ├── storage
+│   │   └── websocket
+│   ├── store
+│   │   ├── hooks
+│   │   └── slices
+│   ├── styles
+│   ├── types
+│   ├── utils
+│   │   ├── formatters
+│   │   └── validators
+│   └── vite-env.d.ts
+├── tsconfig.app.json
+├── tsconfig.json
+├── tsconfig.node.json
+└── vite.config.ts
