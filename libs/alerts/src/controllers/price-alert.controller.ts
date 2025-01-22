@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Query, UseGuards, Req, Param, Patch } from '@nestjs/common';
+import { Controller, Post, Body, Get, Query, UseGuards, Req, Param, Patch, HttpStatus, Delete, HttpCode, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AlertsService } from '../services/alert.service';
 import { CurrentUser, JwtAuthGuard } from '../../../auth/src';
@@ -93,6 +93,30 @@ export class PriceAlertsController {
       return { success: true, message: 'Alerts processed successfully' };
     } catch (error) {
       console.error('API ERROR:', error);
+      throw error;
+    }
+  }
+
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete an alert' })
+  @ApiResponse({ status: 204, description: 'Alert successfully deleted' })
+  @ApiResponse({ status: 404, description: 'Alert not found' })
+  @ApiResponse({ status: 403, description: 'User not authorized to delete this alert' })
+  async deleteAlert(
+    @Param('id') alertId: string,
+    @CurrentUser('id') userId: string,
+  ): Promise<void> {
+    try {
+      const deleted = await this.alertsService.deleteAlert(alertId, userId);
+      if (!deleted) {
+        throw new NotFoundException('Alert not found');
+      }
+    } catch (error) {
+      if (error.message.includes('not authorized')) {
+        throw new ForbiddenException(error.message);
+      }
       throw error;
     }
   }

@@ -217,6 +217,62 @@ export class AlertsService implements OnModuleInit {
   }
 
   /**
+ * Delete an alert for a specific user.
+ * This method ensures that users can only delete their own alerts.
+ * 
+ * @param alertId - The ID of the alert to delete
+ * @param userId - The ID of the user who owns the alert
+ * @returns Promise<boolean> - Returns true if deletion was successful
+ * @throws Error if alert doesn't exist or user doesn't own the alert
+ */
+async deleteAlert(alertId: string, userId: string): Promise<boolean> {
+  try {
+    // First verify the alert exists and belongs to the user
+    const alert = await this.prisma.alert.findFirst({
+      where: {
+        id: alertId,
+        userId: userId,
+      },
+    });
+
+    if (!alert) {
+      throw new Error('Alert not found or user not authorized to delete this alert');
+    }
+
+    // Remove alert references from watchlists first
+    if (alert.watchlistIds?.length > 0) {
+      await this.prisma.watchlist.updateMany({
+        where: {
+          alertIds: {
+            has: alertId
+          }
+        },
+        data: {
+          alertIds: {
+            set: [] // Clear the alert references
+          }
+        }
+      });
+    }
+
+    // Perform the deletion
+    await this.prisma.alert.delete({
+      where: {
+        id: alertId,
+        userId: userId, // Extra safety check
+      },
+    });
+
+    this.logger.log(`Successfully deleted alert with ID ${alertId}`);
+    return true;
+
+  } catch (error) {
+    this.logger.error(`Error deleting alert: ${error.message}`, error.stack);
+    throw error;
+  }
+}
+
+  /**
    * Convert Prisma Alert to our domain Alert type.
    * @param prismaAlert - The Prisma alert object to convert.
    * @returns The converted alert in the domain format.
