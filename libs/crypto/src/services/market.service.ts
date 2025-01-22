@@ -159,7 +159,6 @@ export class MarketService {
       // Get additional market data for trending coins
       const coinIds = data.coins.map(coin => coin.item.id);
       const marketData = await this.getMarketDataBatch(coinIds);
-      console.log('marketData', marketData)
 
       const trending: IMarketTrendingResult[] = data.coins.map(coin => ({
         symbol: coin.item.symbol.toUpperCase(),
@@ -176,7 +175,7 @@ export class MarketService {
         'EX',
         this.trendingCacheDuration
       );
-      console.log(trending)
+
       return trending;
     } catch (error) {
       this.logger.error(`Error fetching trending: ${error.message}`);
