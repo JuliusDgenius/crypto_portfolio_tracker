@@ -25,11 +25,11 @@ model User {
   preferences       Json             // Stores currency, theme, notifications
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
-  refreshTokens      RefreshToken[]
-  portfolios        Portfolio[]
-  watchlists        Watchlist[]
-  exchangeAccounts  ExchangeAccount[]
-  alerts            Alert[]
+  refreshTokens      RefreshToken[]  @relation("UserToRefreshToken")
+  portfolios        Portfolio[]      @relation("UserToPortfolio")
+  watchlists        Watchlist[]      @relation("UserToWatchlist")
+  exchangeAccounts  ExchangeAccount[] @relation("UserToExchangeAccount")
+  alerts            Alert[]          @relation("UserToAlert")
 }
 
 model RefreshToken {
@@ -40,7 +40,7 @@ model RefreshToken {
   createdAt DateTime
   expiresAt DateTime
   isRevoked Boolean  @default(false)
-  user      User     @relation(fields: [userId], references: [id])
+  user      User @relation("UserToRefreshToken", fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([tokenHash])
@@ -57,10 +57,10 @@ model Portfolio {
   lastUpdated     DateTime
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
-  user            User             @relation(fields: [userId], references: [id])
-  transactions    Transaction[]
-  assets          Asset[]
-  historicalData  HistoricalData[]
+  user            User             @relation("UserToPortfolio", fields: [userId], references: [id], onDelete: Cascade)
+  transactions    Transaction[]    @relation("PortfolioToTransaction")
+  assets          Asset[]          @relation("PortfolioToAsset")
+  historicalData  HistoricalData[] @relation("PortfolioToHistoricalData")
 }
 
 model Transaction {
@@ -77,9 +77,9 @@ model Transaction {
   date            DateTime
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
-  portfolio       Portfolio        @relation(fields: [portfolioId], references: [id])
+  portfolio       Portfolio        @relation("PortfolioToTransaction", fields: [portfolioId], references: [id], onDelete: Cascade)
   assetId         String           @db.ObjectId
-  asset           Asset            @relation(fields: [assetId], references: [id])
+  asset           Asset            @relation("AssetToTransaction", fields: [assetId], references: [id], onDelete: Cascade)
 }
 
 model Asset {
@@ -94,8 +94,8 @@ model Asset {
   profitLoss      Float
   allocation      Float             // Percentage of portfolio
   lastUpdated     DateTime
-  portfolio       Portfolio         @relation(fields: [portfolioId], references: [id])
-  transactions    Transaction[]
+  portfolio       Portfolio         @relation("PortfolioToAsset", fields: [portfolioId], references: [id], onDelete: Cascade)
+  transactions    Transaction[]     @relation("AssetToTransaction")
  
   // Back reference to Watchlist
   watchlists      Watchlist[]     @relation("WatchlistToAsset", fields: [watchlistIds], references: [id])
@@ -112,7 +112,7 @@ model Watchlist {
   cryptocurrencies Json             // Array of crypto objects
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
-  user            User             @relation(fields: [userId], references: [id])
+  user            User             @relation("UserToWatchlist", fields: [userId], references: [id], onDelete: Cascade)
 
   // Relationship with assets
   watchedAssets   Asset[]   @relation("WatchlistToAsset", fields: [assetIds], references: [id])
@@ -134,7 +134,7 @@ model ExchangeAccount {
   lastSync        DateTime
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
-  user            User             @relation(fields: [userId], references: [id])
+  user            User             @relation("UserToExchangeAccount", fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Alert {
@@ -147,7 +147,7 @@ model Alert {
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   lastTriggered   DateTime?
-  user            User             @relation(fields: [userId], references: [id])
+  user            User             @relation("UserToAlert", fields: [userId], references: [id], onDelete: Cascade)
 
   // Relationship to watchlist
   watchlists      Watchlist[] @relation(fields: [watchlistIds], references: [id])
@@ -161,7 +161,7 @@ model HistoricalData {
   totalValue      Float
   assets          Json             // Asset snapshots
   createdAt       DateTime         @default(now())
-  portfolio       Portfolio        @relation(fields: [portfolioId], references: [id])
+  portfolio       Portfolio        @relation("PortfolioToHistoricalData", fields: [portfolioId], references: [id], onDelete: Cascade)
 
   @@index([portfolioId, date])
 }
