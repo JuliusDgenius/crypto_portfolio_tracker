@@ -10,6 +10,7 @@ export interface IMarketSearchResult {
     symbol: string;
     name: string;
     price: number;
+    marketCap: number;
     change24h: number;
     lastUpdated: Date;
   }

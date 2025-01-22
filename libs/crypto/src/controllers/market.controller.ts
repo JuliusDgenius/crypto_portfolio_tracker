@@ -235,7 +235,13 @@ export class MarketController {
   })
   async getMarketData(@Param('symbol') symbol: string): Promise<IMarketData> {
     try {
-      return await this.marketService.getMarketData(symbol.toLowerCase());
+      // Clean and encode the symbol
+    const cleanedSymbol = symbol
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-');    // Replace spaces with hyphens
+
+      return await this.marketService.getMarketData(cleanedSymbol.toLowerCase());
     } catch (error) {
       this.logger.error(
         `Failed to fetch market data for ${symbol}`,
