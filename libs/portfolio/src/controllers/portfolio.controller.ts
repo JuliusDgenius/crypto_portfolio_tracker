@@ -228,7 +228,7 @@ export class PortfolioController {
         properties: {
           id: { 
             type: 'string', 
-            format: 'uuid',
+            format: 'ObjectId',
             description: 'Unique identifier for the asset'
           },
           symbol: { 
@@ -266,7 +266,7 @@ export class PortfolioController {
           },
           portfolioId: {
             type: 'string',
-            format: 'uuid',
+            format: 'ObjectId',
             description: 'ID of the portfolio this asset belongs to'
           },
           lastUpdated: {

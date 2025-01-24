@@ -43,8 +43,10 @@ export class HistoricalDataController {
     @Query() query: GetPortfolioHistoryDto  ,
   ) {
     // Default to last 30 days if no dates provided
-    const end = query.endDate || new Date();
-    const start = query.startDate || new Date(query.endDate.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const end = query.endDate ? new Date(query.endDate) : new Date();
+    const start = query.startDate
+    ? new Date(query.startDate)
+    : new Date(query.endDate.getTime() - 30 * 24 * 60 * 60 * 1000);
 
     return this.historicalDataService.getPortfolioHistory(
       portfolioId,

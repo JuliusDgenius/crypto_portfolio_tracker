@@ -1,6 +1,6 @@
 // libs/core/src/user/dto/update-user.dto.ts
 import { IsEmail, IsString, IsOptional, IsObject } from 'class-validator';
-import { JsonPreferences } from '../interfaces/user.interface';
+import { JsonPreferences } from '../interfaces';
 
 export class UpdateUserDto {
   @IsEmail()
