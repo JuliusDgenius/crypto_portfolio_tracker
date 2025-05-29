@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, Logger } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../../../database/src';
 import { IUser, JsonPreferences, transformValidatePreferences } from '../../../../common/src';
 import { CreateUserDto } from '../dto/create-user.dto';
@@ -88,8 +88,8 @@ export class UserRepository {
           const prismaUser = await this.prisma.user.findUnique({ where: { email } });
           return prismaUser ? transformValidatePrismaUser(prismaUser) : null;
       } catch (error) {
-          console.error("Error finding user by email:", error);
-          return null;
+          this.logger.error("Error finding user by email:", error);
+          throw new BadRequestException('Invalid email or password');
       }
   }
 

@@ -1,16 +1,5 @@
 import {
-    Controller,
-    Post,
-    Body,
-    HttpCode,
-    HttpStatus,
-    UseGuards,
-    Get,
-    Req,
-    Logger,
-    UnauthorizedException,
-    Query,
-    Delete,
+    Controller, Post, Get, Body, HttpCode, HttpStatus, UseGuards, Logger, Query, Delete,
   } from '@nestjs/common';
 import { AuthService } from '../services/auth.service';
 import { JwtRefreshGuard  } from '../guards';
@@ -19,14 +8,7 @@ import { JwtAuthGuard } from '../guards';
 import { TempToken, Tokens } from '../';
 import { CurrentUser } from '../decorators';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBody,
-  ApiSecurity,
-  ApiUnauthorizedResponse,
-  ApiBearerAuth,
-  ApiHeader
+  ApiTags, ApiOperation, ApiResponse, ApiBody, ApiSecurity, ApiUnauthorizedResponse, ApiBearerAuth,
 } from '@nestjs/swagger';
 import { User } from '@prisma/client';
 
@@ -112,6 +94,7 @@ export class AuthController {
     })
     @HttpCode(HttpStatus.OK)
     async login(@Body() loginDto: LoginDto): Promise<Tokens> {
+      this.logger.log('Logging user with: ', JSON.stringify(loginDto));
       return this.authService.login(loginDto);
     }
 
@@ -276,7 +259,18 @@ export class AuthController {
       return { message: "Two-factor authentication has been disabled" };
     }
 
-    @Delete('account/delete')
+    @Get('me')
+    @UseGuards(JwtAuthGuard)
+    async getMe(
+      @CurrentUser('id') userId: string
+    ) {
+      this.logger.log('Get me endpoint called by: ', userId);
+      const user = await this.authService.getCurrentUser(userId);
+      this.logger.log('User profile found:', user);
+      return user;
+    }
+
+    @Delete('account-delete')
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth('JWT-auth')
     @ApiOperation({

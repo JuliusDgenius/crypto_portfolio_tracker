@@ -7,6 +7,13 @@ import { ValidationPipe } from '@nestjs/common';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+   // Enable cors
+   app.enableCors({
+     origin: 'http://localhost:5173',
+     credentials: true,
+     allowedHeaders: ['Content-Type', 'Authorization'],
+   });
+
   // Swagger Documentation Setup
   const document = SwaggerModule.createDocument(app, swaggerConfig); // Create the Swagger document
   SwaggerModule.setup('api/api-docs', app, document); // Setup the Swagger UI at the '/api/api-docs' path

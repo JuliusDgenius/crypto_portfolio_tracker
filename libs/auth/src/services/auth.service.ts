@@ -35,16 +35,19 @@ export class AuthService {
   async register(dto: RegisterDto): Promise<{user: Partial<IUser>}> {
     const user = await this.userRepository.create(dto);
     const verificationToken = this.generateVerificationToken(user.id!);
+    const tokens = await this.generateTokens(user);
 
     // send verifiction email
+    this.logger.log(`Sending verification email to ${user.email}`);
     await this.emailService.sendVerificationEmail(
       user.email,
       verificationToken,
       user?.name ?? 'User'
     );
+    this.logger.log('Verification email sent');
 
-    delete user.password
-    return {  user }
+    delete user.password;
+    return {  user, ...tokens }
   }
 
   /**
@@ -58,7 +61,7 @@ export class AuthService {
       // check if user exists
       const user = await this.userRepository.findByEmail(dto.email);
       if (!user) {
-        throw new Error;
+        throw new BadExceptionRequest('Invalid email or password');
       }
 
     if (!user.verified) {
@@ -72,16 +75,34 @@ export class AuthService {
       if (!isPasswordValid) {
         this.logger.debug(`Password not match`);
       }
+	
+      this.logger.log(`User ${user.id} id logged in.`);
+      const tokens = await this.generateTokens(user);
 
-      return await this.generateTokens(user);
+      return {
+        ...tokens,
+	user
+      };
     } catch (error) {
       
       if (error instanceof UnauthorizedException) {
-        throw error;
+	this.logger.debug('Unathorized error occured.');
+        throw UnauthorizedException('Unauthorized');
       }
-      this.logger.error(`Login error: ${error.message}`);
+      this.logger.error(`Login error: ${error?.message}`);
       throw new UnauthorizedException('Invalid credentials');
     }
+  }
+
+  async getCurrentUser(userId: string) {
+    const user = await this.userRepository.findById(userId);
+    
+    if (!user) {
+      throw new BadRequestException('No user found for ID:', userId);
+    }
+
+    const {password, ...sanitizedUser} = user;
+    return sanitizedUser;
   }
 
   /**
@@ -162,6 +183,7 @@ export class AuthService {
     // Send email even if user not found to prevent email enumeration
     if (user) {
       const resetToken = this.generatePasswordResetToken(user.id);
+      this.logger.log(`Sending verification email to ${user.email}`);
       await this.emailService.sendPasswordResetEmail(
         email,
         resetToken,
