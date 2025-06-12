@@ -66,4 +66,40 @@ export class AddAssetDto {
   @IsNumber()
   @Min(0)
   allocation: number = 0;
+
+  @ApiProperty({
+    description: 'Category of the cryptocurrency (e.g., DeFi, Layer 1, Layer 2)',
+    example: 'Layer 1',
+    required: false
+  })
+  @IsString()
+  @IsOptional()
+  category?: string;
+
+  @ApiProperty({
+    description: 'Market capitalization of the cryptocurrency',
+    example: '$1.2T',
+    required: false
+  })
+  @IsString()
+  @IsOptional()
+  marketCap?: string;
+
+  @ApiProperty({
+    description: '24-hour price change percentage',
+    example: 0,
+    required: false
+  })
+  @IsNumber()
+  @IsOptional()
+  twentyFourHourChange?: number = 0;
+
+  @ApiProperty({
+    description: 'Total profit/loss percentage',
+    example: 0,
+    required: false
+  })
+  @IsNumber()
+  @IsOptional()
+  profitLossPercentage?: number = 0;
 }

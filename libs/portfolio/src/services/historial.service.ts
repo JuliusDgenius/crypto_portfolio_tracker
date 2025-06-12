@@ -128,4 +128,31 @@ export class HistoricalDataService {
       assets: assetSnapshots,
     });
   }
+
+  /**
+   * Retrieves historical price data for a specific asset
+   */
+  async getAssetHistory(symbol: string) {
+    const data = await this.prisma.historicalData.findMany({
+      orderBy: {
+        date: 'asc'
+      },
+      select: {
+        date: true,
+        assets: true
+      }
+    });
+
+    // Filter and extract price data for the specific asset
+    return data
+      .map(point => {
+        const assetData = (point.assets as any[]).find(asset => asset.symbol === symbol);
+        if (!assetData) return null;
+        return {
+          date: point.date,
+          price: assetData.price || 0
+        };
+      })
+      .filter(point => point !== null);
+  }
 }

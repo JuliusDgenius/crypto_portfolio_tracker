@@ -40,6 +40,6 @@
       {"path": "../core"},
       {"path": "../database"},
       {"path": "../auth"},
-      {"path": "../crypto"}
+      {"path": "../crypto"},
     ]
   }

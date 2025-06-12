@@ -2,6 +2,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException
 } from '@nestjs/common';
@@ -10,10 +11,10 @@ import { Portfolio, Asset, Transaction, Prisma } from '@prisma/client';
 import { AddAssetDto, CreatePortfolioDto, UpdateAssetDto, UpdatePortfolioDto } from '../dto';
 import { AnalyticsService } from './analytics.service';
 import { PortfolioMetrics, ProfitLoss } from '../types/portfolio.types';
-import { count } from 'console';
 
 @Injectable()
 export class PortfolioService {
+  private readonly logger = new Logger(PortfolioService.name);
   constructor(
     private prisma: PrismaService,
     private analyticsService: AnalyticsService,
@@ -46,10 +47,11 @@ export class PortfolioService {
       month: 0,
       year: 0,
       allTime: 0,
+      twentyFourHour: 0
     }
 
     const portfolioData = {
-        name: dto.name,
+        name: dto.name.toLocaleUpperCase(),
         description: dto.description ?? null,
         totalValue: 0,
         lastUpdated: new Date(),
@@ -108,27 +110,87 @@ export class PortfolioService {
   }
 
   async getPortfolios(userId: string): Promise<Portfolio[]> {
-    return this.prisma.portfolio.findMany({
+    // Fetch portfolios with their assets
+    const portfolios = await this.prisma.portfolio.findMany({
       where: { userId },
       include: {
-        assets: true,
+        assets: true
       },
       orderBy: {
         createdAt: 'desc',
       },
     });
+
+    // Update any assets with null values
+    for (const portfolio of portfolios) {
+      for (const asset of portfolio.assets) {
+        const updates: any = {};
+        let needsUpdate = false;
+
+        if (!asset.marketCap) {
+          updates.marketCap = '0';
+          needsUpdate = true;
+        }
+        if (!asset.category) {
+          updates.category = 'Uncategorized';
+          needsUpdate = true;
+        }
+        if (!asset.twentyFourHourChange) {
+          updates.twentyFourHourChange = 0;
+          needsUpdate = true;
+        }
+        if (!asset.profitLossPercentage) {
+          updates.profitLossPercentage = 0;
+          needsUpdate = true;
+        }
+
+        if (needsUpdate) {
+          await this.prisma.asset.update({
+            where: { id: asset.id },
+            data: {
+              ...updates,
+              lastUpdated: new Date()
+            }
+          });
+        }
+      }
+    }
+
+    return portfolios;
   }
 
   async getPortfoliosById(userId: string, portfolioId: string): Promise<Portfolio> {
-    return this.prisma.portfolio.findFirstOrThrow({
+    this.logger.debug(`Fetching portfolio with ID: ${portfolioId} for user: ${userId}`);
+    
+    if (!portfolioId) {
+      this.logger.error('Portfolio ID is required');
+      throw new NotFoundException('Portfolio ID is required');
+    }
+
+    if (!userId) {
+      this.logger.error('User ID is required');
+      throw new UnauthorizedException('User ID is required');
+    }
+
+    const portfolio = await this.prisma.portfolio.findFirst({
       where: {
-        userId,
-        id: portfolioId 
+        AND: [
+          { id: portfolioId },
+          { userId: userId }
+        ]
       },
       include: {
         assets: true,
       },
     });
+
+    if (!portfolio) {
+      this.logger.error(`Portfolio not found with ID: ${portfolioId} for user: ${userId}`);
+      throw new NotFoundException('Portfolio not found or you do not have permission to view it');
+    }
+
+    this.logger.debug(`Successfully found portfolio: ${portfolio.name}`);
+    return portfolio;
   }
 
   async getPortfolioMetrics(portfolioId: string): Promise<PortfolioMetrics> {
@@ -141,7 +203,12 @@ export class PortfolioService {
       throw new ForbiddenException('Portfolio not found');
     }
 
+    // Ensure profit/Loss exists
     const profitLoss = portfolio.profitLoss as unknown as ProfitLoss;
+    if (profitLoss.twentyFourHour === undefined) {
+      profitLoss.twentyFourHour = 0; // for backend compatibility
+    }
+    
     const assetAllocation = portfolio.assets.map(asset => ({
       symbol: asset.symbol,
       percentage: asset.allocation,
@@ -163,19 +230,19 @@ export class PortfolioService {
     userId: string,
     portfolioId: string,
     dto: AddAssetDto
-): Promise<Asset> {
+  ): Promise<Asset> {
     await this.validatePortfolioAccess(userId, portfolioId);
 
     return this.prisma.$transaction(async (tx) => {
-        const existingAsset = await tx.asset.findFirst({
-            where: {
-                portfolioId,
-                symbol: dto.symbol.toUpperCase()
-            }
-        });
+      const existingAsset = await tx.asset.findFirst({
+        where: {
+          portfolioId,
+          symbol: dto.symbol.toUpperCase()
+        }
+      });
 
-        if (existingAsset) {
-          throw new ConflictException('Asset already exists in portfolio');
+      if (existingAsset) {
+        throw new ConflictException('Asset already exists in portfolio');
       }
 
       const createAssetData: Prisma.AssetUncheckedCreateInput = {
@@ -188,148 +255,181 @@ export class PortfolioService {
         value: 0,
         profitLoss: 0,
         allocation: 0,
-        lastUpdated: new Date() 
+        category: dto.category,
+        marketCap: dto.marketCap,
+        twentyFourHourChange: 0,
+        profitLossPercentage: 0,
+        lastUpdated: new Date()
       };
 
       const asset = await tx.asset.create({
-          data: createAssetData
+        data: createAssetData
       });
 
       await this.updatePortfolioMetrics(portfolioId);
 
-            return asset;
-        });
-    }
+      return asset;
+    });
+  }
 
-    async updateAssetInPortfolio(
-      userId: string,
-      portfolioId: string,
-      assetId: string,
-      dto: UpdateAssetDto
-  ): Promise<Asset> {
-      await this.validatePortfolioAccess(userId, portfolioId);
-      
-      return this.prisma.$transaction(async (tx) => {
-          const asset = await tx.asset.findFirst({
-              where: {
-                  id: assetId,
-                  portfolioId
-              }
-          });
-
-          if (!asset) {
-            throw new NotFoundException('Asset not found in portfolio');
-        }
-
-        const updatedAsset = await tx.asset.update({
-            where: { id: assetId },
-            data: {
-                name: dto.name ?? asset.name,
-                quantity: dto.quantity ?? asset.quantity,
-                averageBuyPrice: dto.averageBuyPrice ?? asset.averageBuyPrice,
-                value: dto.value ?? asset.value,
-                lastUpdated: new Date()
+  async updateAssetInPortfolio(
+    userId: string,
+    portfolioId: string,
+    assetId: string,
+    dto: UpdateAssetDto
+): Promise<Asset> {
+    await this.validatePortfolioAccess(userId, portfolioId);
+    
+    return this.prisma.$transaction(async (tx) => {
+        const asset = await tx.asset.findFirst({
+            where: {
+                id: assetId,
+                portfolioId
             }
         });
 
-        await this.updatePortfolioMetrics(portfolioId);
+        if (!asset) {
+          throw new NotFoundException('Asset not found in portfolio');
+      }
 
-            return updatedAsset;
-        });
-    }
+    const updatedAsset = await tx.asset.update({
+        where: { id: assetId },
+        data: {
+            name: dto.name ?? asset.name,
+            quantity: dto.quantity ?? asset.quantity,
+            averageBuyPrice: dto.averageBuyPrice ?? asset.averageBuyPrice,
+            value: dto.value ?? asset.value,
+            lastUpdated: new Date()
+        }
+    });
 
-    // Internal methods that can be used by TransactionService
-    async getOrCreateAsset(
-      portfolioId: string,
-      symbol: string,
-      name: string
+    await this.updatePortfolioMetrics(portfolioId);
+
+        return updatedAsset;
+    });
+}
+
+  // Internal methods that can be used by TransactionService
+  async getOrCreateAsset(
+    portfolioId: string,
+    symbol: string,
+    name: string
   ): Promise<Asset> {
-      const asset = await this.prisma.asset.findFirst({
-          where: {
-              portfolioId,
-              symbol: symbol.toUpperCase()
-          }
-      });
-
-      if (asset) return asset;
-
-      const defaultAssetData: Prisma.AssetUncheckedCreateInput = {
-        symbol: symbol.toUpperCase(),
-        name,
-        quantity: 0,
-        currentPrice: 0,
-        averageBuyPrice: 0,
-        value: 0,
-        allocation: 0,
+    const asset = await this.prisma.asset.findFirst({
+      where: {
         portfolioId,
-        profitLoss: 0,
-        lastUpdated: new Date()
+        symbol: symbol.toUpperCase()
+      }
+    });
+
+    if (asset) return asset;
+
+    const defaultAssetData: Prisma.AssetUncheckedCreateInput = {
+      symbol: symbol.toUpperCase(),
+      name,
+      quantity: 0,
+      currentPrice: 0,
+      averageBuyPrice: 0,
+      value: 0,
+      allocation: 0,
+      portfolioId,
+      profitLoss: 0,
+      category: null,
+      marketCap: null,
+      twentyFourHourChange: 0,
+      profitLossPercentage: 0,
+      lastUpdated: new Date()
     };
 
-        return this.prisma.asset.create({
-            data: defaultAssetData
-        });
-    }
-          
+    return this.prisma.asset.create({
+      data: defaultAssetData
+    });
+  }
+        
 
-  async validatePortfolioAccess(
-    userId: string, 
-    portfolioId: string
+async validatePortfolioAccess(
+  userId: string, 
+  portfolioId: string
 ): Promise<Portfolio> {
-    const portfolio = await this.prisma.portfolio.findFirst({
-      where: {
-        AND: [
-          { id: portfolioId },
-          { userId: userId }
-        ]
-      }
-    });
-
-    if (!portfolio) {
-      throw new NotFoundException('Portfolio not found');
+  const portfolio = await this.prisma.portfolio.findFirst({
+    where: {
+      AND: [
+        { id: portfolioId },
+        { userId: userId }
+      ]
     }
+  });
 
-    if (portfolio.userId !== userId) {
-      throw new ForbiddenException("Acces denied");
-    }
-
-    return portfolio;
+  if (!portfolio) {
+    throw new NotFoundException('Portfolio not found');
   }
 
-  async updatePortfolioMetrics(
-    portfolioId: string,
-    tx?: Prisma.TransactionClient
-  ): Promise<void> {
-    const BATCH_SIZE = 10 // Implement batching to prevent parallel write issues while maintaining performance
+  if (portfolio.userId !== userId) {
+    throw new ForbiddenException("Access denied");
+  }
 
-    const prismaCLient = tx || this.prisma
-    const assets = await prismaCLient.asset.findMany({
-      where: { portfolioId }
-    });
-    
-    // Calculate total value of assets in the portfolio
-    const totalValue = assets.reduce((sum, asset) => sum + asset.value, 0);
-   
-      // Update allocations based on new total value
-      for (let i = 0; i < assets.length; i += BATCH_SIZE) {
-        const batch = assets.slice(i, i + BATCH_SIZE);
+  return portfolio;
+}
 
-        for (const asset of batch) {
-          await prismaCLient.asset.update({
-            where: { id: asset.id },
-              data: {
-                allocation: totalValue === 0 ? 0 : (asset.value / totalValue) * 100
-              }
-          });
-        }
+async setPrimaryPortfolio(userId: string, portfolioId: string): Promise<Portfolio> {
+  // First validate access
+  await this.validatePortfolioAccess(userId, portfolioId);
+
+  // Use transaction to ensure atomicity
+  return this.prisma.$transaction(async (tx) => {
+    // First, ensure all portfolios have isPrimary field set to false
+    await tx.portfolio.updateMany({
+      where: { 
+        userId,
+        isPrimary: { not: false } // This will match both undefined and true
+      },
+      data: { 
+        isPrimary: false 
       }
+    });
 
-    await prismaCLient.portfolio.update({
+    // Set the selected portfolio as primary
+    return tx.portfolio.update({
       where: { id: portfolioId },
-      data: {
-        totalValue,
-        lastUpdated: new Date()
-      }
+      data: { isPrimary: true }
     });
-  }
+  });
+}
+
+async updatePortfolioMetrics(
+  portfolioId: string,
+  tx?: Prisma.TransactionClient
+): Promise<void> {
+  const BATCH_SIZE = 10 // Implement batching to prevent parallel write issues while maintaining performance
+
+  const prismaCLient = tx || this.prisma
+  const assets = await prismaCLient.asset.findMany({
+    where: { portfolioId }
+  });
+  
+  // Calculate total value of assets in the portfolio
+  const totalValue = assets.reduce((sum, asset) => sum + asset.value, 0);
+ 
+    // Update allocations based on new total value
+    for (let i = 0; i < assets.length; i += BATCH_SIZE) {
+      const batch = assets.slice(i, i + BATCH_SIZE);
+
+      for (const asset of batch) {
+        await prismaCLient.asset.update({
+          where: { id: asset.id },
+            data: {
+              allocation: totalValue === 0 ? 0 : (asset.value / totalValue) * 100
+            }
+        });
+      }
+    }
+
+  await prismaCLient.portfolio.update({
+    where: { id: portfolioId },
+    data: {
+      totalValue,
+      lastUpdated: new Date()
+    }
+  });
+}
 }

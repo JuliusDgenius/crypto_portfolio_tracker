@@ -117,8 +117,19 @@ export class TransactionService {
       limit: number;
       type?: TransactionType;
       cryptocurrency?: string;
+      sort?: string;
     },
   ): Promise<{ transactions: Transaction[]; total: number }> {
+    // Parse sort parameter
+    let orderBy: Prisma.TransactionOrderByWithRelationInput = {};
+    if (options.sort) {
+      const [field, direction] = options.sort.split(':');
+      orderBy = { [field]: direction === 'desc' ? 'desc' : 'asc'};
+    } else {
+      // Default sorting
+      orderBy = { date: 'desc' };
+    }
+
     const where: Prisma.TransactionWhereInput = {
       portfolioId,
       portfolio: {
@@ -143,7 +154,7 @@ export class TransactionService {
         where,
         skip,
         take,
-        orderBy: { date: 'desc' },
+        orderBy,
         include: {
           asset: true
         }

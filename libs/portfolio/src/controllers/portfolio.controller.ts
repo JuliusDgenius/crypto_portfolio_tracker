@@ -12,6 +12,8 @@ import {
   HttpCode,
   Patch,
   NotFoundException,
+  Logger,
+  Request,
 } from '@nestjs/common';
 import { CurrentUser, JwtAuthGuard } from '../../../auth/src';
 import { PortfolioService } from '../services/portfolio.service';
@@ -26,13 +28,18 @@ import {
   ApiBearerAuth,
   ApiSecurity,    // Added for documenting security requirements
   ApiHeader,      // Added for documenting JWT header
+  ApiQuery,
 } from '@nestjs/swagger';
+import { AuthGuard } from '@nestjs/passport';
+import { Portfolio } from '@prisma/client';
 
 @ApiTags('portfolios')
 @ApiBearerAuth('JWT-auth')
 @Controller('portfolio')
 @UseGuards(JwtAuthGuard)
 export class PortfolioController {
+  private readonly logger = new Logger(PortfolioController.name);
+
   constructor(
     private readonly portfolioService: PortfolioService,
     private readonly analyticsService: AnalyticsService,
@@ -118,7 +125,8 @@ export class PortfolioController {
                 week: { type: 'number', default: 0 },
                 month: { type: 'number', default: 0 },
                 year: { type: 'number', default: 0 },
-                allTime: { type: 'number', default: 0 }
+                allTime: { type: 'number', default: 0 },
+                twentyFourHour: { type: 'number', default: 0 }
               }
             },
             lastUpdated: { 
@@ -353,6 +361,7 @@ async addAssetToPortfolio(
     @CurrentUser('id') userId: string,
     @Param('portfolioId') portfolioId: string
   ) {
+    this.logger.log(`Fetching portfolio with ID: ${portfolioId} for user: ${userId}`);
     const portfolio = await this.portfolioService.getPortfoliosById(userId, portfolioId);
     return { portfolio };
   }
@@ -360,7 +369,8 @@ async addAssetToPortfolio(
   @Get(':portfolioId/metrics')
   @ApiOperation({
     summary: 'Get portfolio metrics',
-    description: 'Retrieves detailed metrics for a specific portfolio including profit/loss, asset allocation, and performance'
+    description: 'Retrieves detailed metrics for a specific portfolio including profit/loss,\
+                  asset allocation, and performance'
   })
   @ApiParam({
     name: 'portfolioId',
@@ -381,6 +391,16 @@ async addAssetToPortfolio(
   ) {
     const metrics = await this.portfolioService.getPortfolioMetrics(portfolioId);
     return { metrics };
+  }
+
+  @Get('dashboard/summary')
+  @ApiOperation({ summary: 'Get dashboard summary data' })
+  async getDashboardSummary(@CurrentUser('id') userId: string) {
+    const portfolios = await this.portfolioService.getPortfolios(userId);
+    if (!portfolios.length) return null;
+    
+    const portfolioId = portfolios[0].id;
+    return this.portfolioService.getPortfolioMetrics(portfolioId);
   }
 
   @Patch(':portfolioId')
@@ -464,6 +484,164 @@ async addAssetToPortfolio(
     @CurrentUser('id') userId: string,
     @Param('portfolioId') portfolioId: string
   ) {
+    this.logger.log('PortfolioId:', portfolioId);
+    this.logger.log('UserId:', userId);
     await this.portfolioService.deletePortfolio(userId, portfolioId);
+  }
+
+  @Patch(':portfolioId/set-primary')
+  @ApiOperation({
+    summary: 'Set portfolio as primary',
+    description: 'Updates the portfolio to be the primary portfolio for the authenticated user'
+  })
+  @ApiParam({
+    name: 'portfolioId',
+    description: 'ObjectId of the portfolio to set as primary',
+    type: 'string',
+  })
+  @ApiSecurity('JWT-auth')
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Portfolio set as primary successfully'
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Portfolio not found'
+  })
+  async setPrimaryPortfolio(
+    @CurrentUser('id') userId: string,
+    @Param('portfolioId') portfolioId: string
+  ) {
+    const portfolio = await this.portfolioService.setPrimaryPortfolio(userId, portfolioId);
+    return { portfolio };
+  }
+
+  @Get(':portfolioId/performance')
+  @ApiOperation({ 
+    summary: 'Get portfolio performance data',
+    description: 'Returns historical performance data points for the specified timeframe'
+  })
+  @ApiParam({
+    name: 'portfolioId',
+    description: 'ID of the portfolio',
+    type: 'string'
+  })
+  @ApiQuery({
+    name: 'timeFrame',
+    description: 'Time frame for performance data (1D, 1W, 1M, 3M, YTD, 1Y, All)',
+    type: 'string',
+    required: true
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Performance data retrieved successfully'
+  })
+  async getPortfolioPerformance(
+    @Param('portfolioId') portfolioId: string,
+    @Query('timeFrame') timeFrame: string
+  ) {
+    return this.analyticsService.getPortfolioPerformance(portfolioId, timeFrame);
+  }
+
+  @Get(':portfolioId/health')
+  @ApiOperation({ 
+    summary: 'Get portfolio health metrics',
+    description: 'Returns various health metrics for the portfolio'
+  })
+  @ApiParam({
+    name: 'portfolioId',
+    description: 'ID of the portfolio',
+    type: 'string'
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Health metrics retrieved successfully'
+  })
+  async getPortfolioHealth(
+    @Param('portfolioId') portfolioId: string
+  ) {
+    return this.analyticsService.getPortfolioHealth(portfolioId);
+  }
+
+  @Get(':portfolioId/risk-analysis')
+  @ApiOperation({ 
+    summary: 'Get portfolio risk analysis',
+    description: 'Returns comprehensive risk analysis for the portfolio'
+  })
+  @ApiParam({
+    name: 'portfolioId',
+    description: 'ID of the portfolio',
+    type: 'string'
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Risk analysis retrieved successfully'
+  })
+  async getRiskAnalysis(
+    @Param('portfolioId') portfolioId: string
+  ) {
+    return this.analyticsService.getRiskAnalysis(portfolioId);
+  }
+
+  @Get(':portfolioId/correlation-matrix')
+  @ApiOperation({ 
+    summary: 'Get portfolio correlation matrix',
+    description: 'Returns correlation matrix for all assets in the portfolio'
+  })
+  @ApiParam({
+    name: 'portfolioId',
+    description: 'ID of the portfolio',
+    type: 'string'
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Correlation matrix retrieved successfully'
+  })
+  async getCorrelationMatrix(
+    @Param('portfolioId') portfolioId: string
+  ) {
+    return this.analyticsService.getCorrelationMatrix(portfolioId);
+  }
+
+  @Get(':portfolioId/assets')
+  @ApiOperation({ 
+    summary: 'Get asset distribution',
+    description: 'Returns detailed distribution of assets in the portfolio'
+  })
+  @ApiParam({
+    name: 'portfolioId',
+    description: 'ID of the portfolio',
+    type: 'string'
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Asset distribution retrieved successfully'
+  })
+  async getAssetDistribution(
+    @Param('portfolioId') portfolioId: string,
+    @CurrentUser('id') userId: string
+  ) {
+    const portfolio = await this.portfolioService.getPortfoliosById(userId, portfolioId);
+
+    if (!portfolio) {
+      throw new NotFoundException('Portfolio not found');
+    }
+
+    return (portfolio as any).assets.map(asset => ({
+      id: asset.id,
+      symbol: asset.symbol,
+      name: asset.name,
+      quantity: asset.quantity,
+      averageBuyPrice: asset.averageBuyPrice,
+      currentPrice: asset.currentPrice,
+      value: asset.value,
+      allocation: asset.allocation,
+      category: asset.category,
+      marketCap: asset.marketCap,
+      twentyFourHourChange: asset.twentyFourHourChange,
+      profitLoss: asset.profitLoss,
+      profitLossPercentage: asset.profitLossPercentage,
+      lastUpdated: asset.lastUpdated
+    }));
   }
 }

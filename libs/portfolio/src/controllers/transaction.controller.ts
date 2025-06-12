@@ -163,6 +163,13 @@ export class TransactionController {
     required: false,
     type: 'string',
   })
+  @ApiQuery({
+    name: 'sort',
+    description: 'Sort field and direction (format: field:direction)',
+    required: false,
+    type: 'string',
+    example: 'date:desc',
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'List of transactions retrieved successfully',
@@ -211,6 +218,7 @@ export class TransactionController {
     @Query('limit') limit = 10,
     @Query('type') type?: TransactionType,
     @Query('cryptocurrency') cryptocurrency?: string,
+    @Query('sort') sort?: string,
   ) {
     const transactions = await this.transactionService.getTransactions(
       portfolioId,
@@ -220,6 +228,7 @@ export class TransactionController {
         limit,
         type,
         cryptocurrency,
+        sort
       },
     );
     

@@ -52,11 +52,12 @@ model Portfolio {
   userId          String           @db.ObjectId
   name            String
   description     String?
-  totalValue      Float
+  totalValue      Float            @default(0)
   profitLoss      Json             // Stores day, week, month, year, allTime
-  lastUpdated     DateTime
+  lastUpdated     DateTime         @default(now())
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
+  isPrimary       Boolean          @default(false)
   user            User             @relation("UserToPortfolio", fields: [userId], references: [id], onDelete: Cascade)
   transactions    Transaction[]    @relation("PortfolioToTransaction")
   assets          Asset[]          @relation("PortfolioToAsset")
@@ -93,6 +94,10 @@ model Asset {
   value           Float
   profitLoss      Float
   allocation      Float             // Percentage of portfolio
+  category        String?           // e.g., DeFi, Layer 1, Layer 2. etc.
+  marketCap       String?            // Market capitalization
+  twentyFourHourChange  Float?       // 24-hour price change percentage
+  profitLossPercentage  Float?       // Total profit/loss percentage
   lastUpdated     DateTime
   portfolio       Portfolio         @relation("PortfolioToAsset", fields: [portfolioId], references: [id], onDelete: Cascade)
   transactions    Transaction[]     @relation("AssetToTransaction")
