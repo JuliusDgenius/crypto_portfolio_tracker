@@ -644,4 +644,36 @@ async addAssetToPortfolio(
       lastUpdated: asset.lastUpdated
     }));
   }
+
+  @Delete(':portfolioId/assets/:assetId')
+  @ApiOperation({ 
+    summary: 'Delete asset from portfolio',
+    description: 'Removes an asset and all its associated transactions from the portfolio'
+  })
+  @ApiParam({
+    name: 'portfolioId',
+    description: 'ID of the portfolio',
+    type: 'string'
+  })
+  @ApiParam({
+    name: 'assetId',
+    description: 'ID of the asset to delete',
+    type: 'string'
+  })
+  @ApiResponse({
+    status: HttpStatus.NO_CONTENT,
+    description: 'Asset deleted successfully'
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Asset or portfolio not found'
+  })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteAsset(
+    @CurrentUser('id') userId: string,
+    @Param('portfolioId') portfolioId: string,
+    @Param('assetId') assetId: string
+  ) {
+    await this.portfolioService.deleteAsset(userId, portfolioId, assetId);
+  }
 }

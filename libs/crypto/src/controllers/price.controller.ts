@@ -156,4 +156,28 @@ export class PriceController {
     const indicatorArray = indicators.split(',').map(i => i.trim().toLowerCase());
     return this.priceService.getPriceIndicators(symbol, indicatorArray);
   }
+
+  @Get('available')
+  @ApiOperation({ 
+    summary: 'Get list of available cryptocurrencies',
+    description: 'Returns a list of available cryptocurrencies with their basic information including symbol, name, and current price'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'List of available cryptocurrencies retrieved successfully',
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          symbol: { type: 'string', example: 'BTC' },
+          name: { type: 'string', example: 'Bitcoin' },
+          currentPrice: { type: 'number', example: 42000.50 }
+        }
+      }
+    }
+  })
+  async getAvailableCryptos() {
+    return this.priceService.getAvailableCryptos();
+  }
 }

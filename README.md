@@ -42,7 +42,7 @@ A robust cryptocurrency portfolio management application that enables real-time 
 
 ### Frontend
 - ReactJS
-- TailwindCSS
+- Material UI
 - Chart.js
 - Axios
 

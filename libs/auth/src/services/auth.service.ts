@@ -1,4 +1,5 @@
-import { ConflictException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, 
+  UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UserRepository, PasswordService } from '../../../core/src';
@@ -56,38 +57,38 @@ export class AuthService {
    * @returns A promise that resolves with the tokens if login is successful.
    * @throws UnauthorizedException if the credentials are invalid or email is not verified.
    */
-  async login(dto: LoginDto): Promise<Tokens> {
+  async login(dto: LoginDto): Promise<{ user: Partial<IUser> } | Tokens> {
     try {
       // check if user exists
       const user = await this.userRepository.findByEmail(dto.email);
       if (!user) {
-        throw new BadExceptionRequest('Invalid email or password');
+        throw new BadRequestException('Invalid email or password');
       }
 
-    if (!user.verified) {
-      throw new UnauthorizedException('Please verify your email first');
-    }
+      if (!user.verified) {
+        throw new UnauthorizedException('Please verify your email first');
+      }
 
       const isPasswordValid = await this.passwordService.compare(
-      dto.password,
-      user.password,
+        dto.password,
+        user.password,
       );
       if (!isPasswordValid) {
         this.logger.debug(`Password not match`);
+        throw new UnauthorizedException('Invalid credentials');
       }
 	
       this.logger.log(`User ${user.id} id logged in.`);
       const tokens = await this.generateTokens(user);
-
+      const { password, ...retUser } = user 
       return {
         ...tokens,
-	user
+        user: retUser
       };
     } catch (error) {
-      
       if (error instanceof UnauthorizedException) {
-	this.logger.debug('Unathorized error occured.');
-        throw UnauthorizedException('Unauthorized');
+        this.logger.debug('Unauthorized error occurred.');
+        throw error;
       }
       this.logger.error(`Login error: ${error?.message}`);
       throw new UnauthorizedException('Invalid credentials');
@@ -402,5 +403,34 @@ export class AuthService {
         expiresIn: '1h', // Token expires in 1 hour
       }
     );
+  }
+
+  /**
+   * Resends verification email to an unverified user
+   * @param email - The email address of the user
+   * @returns A promise that resolves when the email is sent
+   * @throws BadRequestException if the user is already verified or doesn't exist
+   */
+  async resendVerificationEmail(email: string): Promise<void> {
+    const user = await this.userRepository.findByEmail(email);
+    
+    if (!user) {
+      throw new BadRequestException('No account found with this email');
+    }
+
+    if (user.verified) {
+      throw new BadRequestException('Email is already verified');
+    }
+
+    const verificationToken = this.generateVerificationToken(user.id);
+    this.logger.log(`Resending verification email to ${user.email}`);
+    
+    await this.emailService.sendVerificationEmail(
+      user.email,
+      verificationToken,
+      user?.name ?? 'User'
+    );
+    
+    this.logger.log('Verification email resent successfully');
   }
 }

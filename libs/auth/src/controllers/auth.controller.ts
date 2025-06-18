@@ -11,6 +11,7 @@ import {
   ApiTags, ApiOperation, ApiResponse, ApiBody, ApiSecurity, ApiUnauthorizedResponse, ApiBearerAuth,
 } from '@nestjs/swagger';
 import { User } from '@prisma/client';
+import { IUser } from '../../../common/src';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -93,7 +94,7 @@ export class AuthController {
       description: 'Invalid credentials or email not verified'
     })
     @HttpCode(HttpStatus.OK)
-    async login(@Body() loginDto: LoginDto): Promise<Tokens> {
+    async login(@Body() loginDto: LoginDto): Promise<{ user: Partial<IUser> } | Tokens> {
       this.logger.log('Logging user with: ', JSON.stringify(loginDto));
       return this.authService.login(loginDto);
     }
@@ -292,5 +293,37 @@ export class AuthController {
       console.log("UserId", userId)
       await this.authService.deleteAccount(userId, dto);
       return { message: 'Your account has been deleted successfully' };
+    }
+
+    @Post('resend-verification')
+    @ApiOperation({ 
+        summary: 'Resend verification email',
+        description: 'Resends the verification email to an unverified user'
+    })
+    @ApiBody({
+        type: RequestPasswordResetDto,
+        description: 'Email address for verification'
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Verification email sent successfully',
+        schema: {
+            properties: {
+                message: { type: 'string', example: 'Verification email sent successfully' }
+            }
+        }
+    })
+    @ApiResponse({
+        status: 400,
+        description: 'User not found or email already verified'
+    })
+    @HttpCode(HttpStatus.OK)
+    async resendVerificationEmail(
+        @Body() dto: RequestPasswordResetDto
+    ): Promise<{ message: string }> {
+        await this.authService.resendVerificationEmail(dto.email);
+        return { 
+            message: 'If an unverified account exists with this email, you will receive verification instructions.' 
+        };
     }
 }

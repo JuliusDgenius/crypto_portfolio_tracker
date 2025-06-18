@@ -245,30 +245,59 @@ export class PortfolioService {
         throw new ConflictException('Asset already exists in portfolio');
       }
 
+      // Calculate initial value
+      const initialValue = dto.quantity * dto.currentPrice;
+
       const createAssetData: Prisma.AssetUncheckedCreateInput = {
         portfolioId,
         symbol: dto.symbol.toUpperCase(),
         name: dto.name,
-        quantity: 0,
-        currentPrice: 0,
-        averageBuyPrice: 0,
-        value: 0,
-        profitLoss: 0,
-        allocation: 0,
-        category: dto.category,
-        marketCap: dto.marketCap,
-        twentyFourHourChange: 0,
-        profitLossPercentage: 0,
+        quantity: dto.quantity,
+        currentPrice: dto.currentPrice,
+        averageBuyPrice: dto.averageBuyPrice || dto.currentPrice,
+        value: initialValue,
+        profitLoss: initialValue - (dto.quantity * (dto.averageBuyPrice || dto.currentPrice)),
+        allocation: 0, // Will be updated after creation
+        category: dto.category || 'Uncategorized',
+        marketCap: dto.marketCap || '0',
+        twentyFourHourChange: dto.twentyFourHourChange || 0,
+        profitLossPercentage: dto.averageBuyPrice ? 
+          ((dto.currentPrice - dto.averageBuyPrice) / dto.averageBuyPrice) * 100 : 0,
         lastUpdated: new Date()
       };
 
+      // Create the asset
       const asset = await tx.asset.create({
         data: createAssetData
       });
 
-      await this.updatePortfolioMetrics(portfolioId);
+      // Get all assets including the newly created one
+      const allAssets = await tx.asset.findMany({
+        where: { portfolioId }
+      });
 
-      return asset;
+      // Calculate total portfolio value
+      const totalValue = allAssets.reduce((sum, a) => sum + a.value, 0);
+
+      // Update the new asset's allocation
+      const allocation = totalValue === 0 ? 0 : (initialValue / totalValue) * 100;
+      
+      // Update the asset with the correct allocation
+      const updatedAsset = await tx.asset.update({
+        where: { id: asset.id },
+        data: { allocation }
+      });
+
+      // Update portfolio total value
+      await tx.portfolio.update({
+        where: { id: portfolioId },
+        data: {
+          totalValue,
+          lastUpdated: new Date()
+        }
+      });
+
+      return updatedAsset;
     });
   }
 
@@ -277,7 +306,7 @@ export class PortfolioService {
     portfolioId: string,
     assetId: string,
     dto: UpdateAssetDto
-): Promise<Asset> {
+  ): Promise<Asset> {
     await this.validatePortfolioAccess(userId, portfolioId);
     
     return this.prisma.$transaction(async (tx) => {
@@ -307,7 +336,41 @@ export class PortfolioService {
 
         return updatedAsset;
     });
-}
+  }
+
+  async deleteAsset(
+    userId: string,
+    portfolioId: string,
+    assetId: string
+  ): Promise<void> {
+    await this.validatePortfolioAccess(userId, portfolioId);
+    
+    return this.prisma.$transaction(async (tx) => {
+      const asset = await tx.asset.findFirst({
+        where: {
+          id: assetId,
+          portfolioId
+        }
+      });
+
+      if (!asset) {
+        throw new NotFoundException('Asset not found in portfolio');
+      }
+
+      // Delete all transactions associated with this asset
+      await tx.transaction.deleteMany({
+        where: { assetId }
+      });
+
+      // Delete the asset
+      await tx.asset.delete({
+        where: { id: assetId }
+      });
+
+      // Update portfolio metrics after asset deletion
+      await this.updatePortfolioMetrics(portfolioId, tx);
+    });
+  }
 
   // Internal methods that can be used by TransactionService
   async getOrCreateAsset(
@@ -407,22 +470,42 @@ async updatePortfolioMetrics(
     where: { portfolioId }
   });
   
+  this.logger.debug('Updating portfolio metrics:', {
+    portfolioId,
+    assetCount: assets.length,
+    assets: assets.map(a => ({
+      symbol: a.symbol,
+      value: a.value,
+      quantity: a.quantity,
+      currentPrice: a.currentPrice
+    }))
+  });
+
   // Calculate total value of assets in the portfolio
   const totalValue = assets.reduce((sum, asset) => sum + asset.value, 0);
+  
+  this.logger.debug('Portfolio total value:', totalValue);
  
-    // Update allocations based on new total value
-    for (let i = 0; i < assets.length; i += BATCH_SIZE) {
-      const batch = assets.slice(i, i + BATCH_SIZE);
+  // Update allocations based on new total value
+  for (let i = 0; i < assets.length; i += BATCH_SIZE) {
+    const batch = assets.slice(i, i + BATCH_SIZE);
 
-      for (const asset of batch) {
-        await prismaCLient.asset.update({
-          where: { id: asset.id },
-            data: {
-              allocation: totalValue === 0 ? 0 : (asset.value / totalValue) * 100
-            }
-        });
-      }
+    for (const asset of batch) {
+      const allocation = totalValue === 0 ? 0 : (asset.value / totalValue) * 100;
+      this.logger.debug(`Calculating allocation for ${asset.symbol}:`, {
+        value: asset.value,
+        totalValue,
+        allocation
+      });
+
+      await prismaCLient.asset.update({
+        where: { id: asset.id },
+        data: {
+          allocation
+        }
+      });
     }
+  }
 
   await prismaCLient.portfolio.update({
     where: { id: portfolioId },
@@ -431,5 +514,7 @@ async updatePortfolioMetrics(
       lastUpdated: new Date()
     }
   });
+
+  this.logger.debug('Portfolio metrics updated successfully');
 }
 }
