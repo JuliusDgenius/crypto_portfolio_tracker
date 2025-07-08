@@ -30,6 +30,7 @@ model User {
   watchlists        Watchlist[]      @relation("UserToWatchlist")
   exchangeAccounts  ExchangeAccount[] @relation("UserToExchangeAccount")
   alerts            Alert[]          @relation("UserToAlert")
+  walletAddresses   WalletAddress[]  @relation("UserToWalletAddress")
 }
 
 model RefreshToken {
@@ -169,6 +170,21 @@ model HistoricalData {
   portfolio       Portfolio        @relation("PortfolioToHistoricalData", fields: [portfolioId], references: [id], onDelete: Cascade)
 
   @@index([portfolioId, date])
+}
+
+model WalletAddress {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String   @db.ObjectId
+  blockchain      String   // e.g., 'bitcoin', 'ethereum', 'polygon', etc.
+  address         String
+  label           String?
+  isActive        Boolean  @default(true)
+  lastSync        DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation("UserToWalletAddress", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, blockchain, address])
 }
 
 enum TransactionType {

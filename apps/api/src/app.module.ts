@@ -9,6 +9,7 @@ import { WatchlistModule } from '../../../libs/watchlist/src';
 import { AlertsModule } from '../../../libs/alerts/src';
 import emailConfig from '../../../libs/common/src/email/config/email.config';
 import * as Joi from 'joi';
+import { CoreModule } from '../../../libs/core/src/core.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import * as Joi from 'joi';
     AuthModule,
     CryptoModule,
     PortfolioModule,
+    CoreModule,
     WatchlistModule,
     AlertsModule,
   ],

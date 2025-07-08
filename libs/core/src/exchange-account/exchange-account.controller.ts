@@ -11,7 +11,7 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 export class ExchangeAccountController {
   constructor(private readonly exchangeAccountService: ExchangeAccountService) {}
 
-  @Post()
+  @Post('exchange')
   @ApiOperation({ summary: 'Create an exchange account' })
   @ApiResponse({ status: 201, description: 'The exchange account has been successfully created.' })
   @ApiResponse({ status: 400, description: 'Bad Request.' })
@@ -19,7 +19,7 @@ export class ExchangeAccountController {
     return this.exchangeAccountService.create(userId, dto);
   }
 
-  @Get()
+  @Get('accounts')
   @ApiOperation({ summary: 'Retrieve all exchange accounts' })
   @ApiResponse({ status: 200, description: 'List of exchange accounts.' })
   findAll(@CurrentUser('id') userId: string) {
@@ -34,7 +34,7 @@ export class ExchangeAccountController {
     return this.exchangeAccountService.findOne(userId, id);
   }
 
-  @Delete(':id')
+  @Delete('delete/:id')
   @ApiOperation({ summary: 'Delete a specific exchange account' })
   @ApiResponse({ status: 200, description: 'The exchange account has been successfully deleted.' })
   @ApiResponse({ status: 404, description: 'Not Found.' })
