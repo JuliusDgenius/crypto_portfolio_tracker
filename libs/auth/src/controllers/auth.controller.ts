@@ -3,7 +3,10 @@ import {
   } from '@nestjs/common';
 import { AuthService } from '../services/auth.service';
 import { JwtRefreshGuard  } from '../guards';
-import { RegisterDto, LoginDto, ResetPasswordDto, RequestPasswordResetDto, DeleteAccountDto } from '../dto';
+import { RegisterDto, LoginDto, ResetPasswordDto,
+         RequestPasswordResetDto, DeleteAccountDto,
+         Setup2FADto, Verify2FADto
+        } from '../dto';
 import { JwtAuthGuard } from '../guards';
 import { TempToken, Tokens } from '../';
 import { CurrentUser } from '../decorators';
@@ -94,7 +97,8 @@ export class AuthController {
       description: 'Invalid credentials or email not verified'
     })
     @HttpCode(HttpStatus.OK)
-    async login(@Body() loginDto: LoginDto): Promise<{ user: Partial<IUser> } | Tokens> {
+    async login(
+      @Body() loginDto: LoginDto): Promise<{ user: Partial<IUser> } |Tokens | TempToken> {
       this.logger.log('Logging user with: ', JSON.stringify(loginDto));
       return this.authService.login(loginDto);
     }
@@ -242,6 +246,107 @@ export class AuthController {
       return { message: 'Two-factor authentication has been enabled' };
     }
 
+    @Post('initiate-2fa-setup')
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
+    @ApiOperation({
+      summary: 'Initiate 2FA setup',
+      description: 'Generates a TOTP secret and QR code for 2FA setup'
+    })
+    @ApiResponse({
+      status: 200,
+      description: '2FA setup initiated successfully',
+      schema: {
+        properties: {
+          secret: { type: 'string', example: 'JBSWY3DPEHPK3PXP' },
+          qrCodeUrl: {
+            type: 'string',
+            example: 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=...'
+          },
+          otpauthUrl: {
+            type: 'string',
+            example: 'otpauth://totp/Crypto%20Portfolio%20Tracker:user@example.com?secret=...'
+          }
+        }
+      }
+    })
+    @HttpCode(HttpStatus.OK)
+    @ApiSecurity('JWT-auth')
+    async initiate2FASetup(
+      @CurrentUser('id') userId: string
+    ): Promise<{
+      secret: string;
+      qrCodeUrl: string;
+      otpauthUrl: string;
+    }> {
+      return this.authService.initiate2FASetup(userId);
+    }
+
+    @Post('complete-2fa-setup')
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
+    @ApiOperation({
+      summary: 'Complete 2FA setup',
+      description: 'Verifies the TOTP code and completes 2FA setup'
+    })
+    @ApiBody({
+      type: Setup2FADto,
+      description: 'TOTP code from authenticator app'
+    })
+    @ApiResponse({
+      status: 200,
+      description: '2FA setup completed successfully'
+    })
+    @HttpCode(HttpStatus.OK)
+    @ApiSecurity('JWT-auth')
+    async complete2FASetup(
+      @CurrentUser('id') userId: string,
+      @Body() dto: Setup2FADto,
+    ): Promise<{ message: string }> {
+      await this.authService.complete2FASetup(userId, dto);
+      return { message: 'Two-factor authentication has been set up successfully' };
+    }
+
+    @Post('verify-2fa')
+    @ApiOperation({
+      summary: 'Verify 2FA code',
+      description: 'Verifies a TOTP code during login'
+    })
+    @ApiBody({
+      type: Verify2FADto,
+      description: 'TOTP code from authenticator app'
+    })
+    @ApiResponse({
+      status: 200,
+      description: '2FA verification successful',
+      schema: {
+        properties: {
+          accessToken: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIs...' },
+          refreshToken: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIs...' },
+          user: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              email: { type: 'string' },
+              name: { type: 'string' }
+            }
+          }
+        }
+      }
+    })
+    @ApiUnauthorizedResponse({
+      description: 'Invalid 2FA code'
+    })
+    @HttpCode(HttpStatus.OK)
+    async verify2FA(
+      @Body() dto: Verify2FADto,
+      @Body('tempToken') tempToken: string
+    ): Promise<{ user: Partial<IUser> } & Tokens> {
+      this.logger.log('Verifying 2FA with: ', JSON.stringify(dto));
+      this.logger.log('Temp token: ', tempToken);
+      return this.authService.verify2FA(dto, tempToken);
+    }
+
     @Post('disable-2fa')
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
@@ -323,7 +428,8 @@ export class AuthController {
     ): Promise<{ message: string }> {
         await this.authService.resendVerificationEmail(dto.email);
         return { 
-            message: 'If an unverified account exists with this email, you will receive verification instructions.' 
+            message: 'If an unverified account exists with this email,\
+             you will receive verification instructions.' 
         };
     }
 }

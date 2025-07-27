@@ -163,7 +163,7 @@ export class UserRepository {
     }
 }
 
-async toggle2FA(userId: string, enable: boolean): Promise<IUser | null> {
+async toggle2FA(userId: string, enable: boolean, secret?: string): Promise<IUser | null> {
   try {
     // Start a transaction to ensure atomicity
     const updatedUser = await this.prisma.$transaction(async (prisma) => {
@@ -191,8 +191,12 @@ async toggle2FA(userId: string, enable: boolean): Promise<IUser | null> {
         updatedAt: new Date(), // Always update the timestamp
       };
 
-      // If enabling 2FA, update preferences for security notifications
+      // If enabling 2FA, store the secret and update preferences
       if (enable) {
+        if (!secret) {
+          throw new Error('TOTP secret is required when enabling 2FA');
+        }
+        updatedData.twoFactorSecret = secret;
         updatedData.preferences = {
           ...transformValidatePreferences(user.preferences),
           notifications: {
@@ -201,10 +205,9 @@ async toggle2FA(userId: string, enable: boolean): Promise<IUser | null> {
             push: true,
           },
         };
-      }
-
-      // If disabling 2FA, optionally revert related settings (if needed)
-      if (!enable) {
+      } else {
+        // If disabling 2FA, clear the secret
+        updatedData.twoFactorSecret = null;
         updatedData.preferences = {
           ...transformValidatePreferences(user.preferences),
           notifications: {
@@ -243,6 +246,28 @@ async toggle2FA(userId: string, enable: boolean): Promise<IUser | null> {
   }
 }
 
+/**
+ * Stores the TOTP secret for a user
+ * @param userId - The user ID
+ * @param encryptedSecret - The encrypted TOTP secret
+ * @returns Promise<IUser | null>
+ */
+async storeTOTPSecret(userId: string, encryptedSecret: string): Promise<IUser | null> {
+  try {
+    const prismaUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: { 
+        twoFactorSecret: encryptedSecret,
+        updatedAt: new Date()
+      }
+    });
+    
+    return transformValidatePrismaUser(prismaUser);
+  } catch (error) {
+    this.logger.error(`Failed to store TOTP secret for user ${userId}: ${error.message}`);
+    throw new Error('Failed to store TOTP secret');
+  }
+}
 
 
   async updatePreferences(

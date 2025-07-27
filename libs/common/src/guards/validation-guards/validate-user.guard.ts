@@ -43,6 +43,7 @@ export function isValidJsonPreferences(
       profilePicture: prismaUser.profilePicture ?? undefined,
       verified: prismaUser.verified,
       twoFactorEnabled: prismaUser.twoFactorEnabled,
+      twoFactorSecret: prismaUser.twoFactorSecret ?? undefined,
       preferences: transformValidatePreferences(prismaUser.preferences),
       createdAt: prismaUser.createdAt,
       updatedAt: prismaUser.updatedAt,

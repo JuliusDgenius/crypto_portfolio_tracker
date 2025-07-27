@@ -6,6 +6,7 @@ export interface IUser {
   profilePicture?: string;
   verified: boolean;
   twoFactorEnabled: boolean;
+  twoFactorSecret?: string; // Encrypted TOTP secret for 2FA
   preferences: JsonPreferences;
   createdAt: Date;
   updatedAt: Date;

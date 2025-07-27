@@ -7,10 +7,12 @@ import { DeleteAccountDto, LoginDto } from '../dto';
 import { RegisterDto } from '../dto';
 import { ResetPasswordDto } from '../dto';
 import { VerifyEmailDto } from '../dto';
+import { Setup2FADto, Verify2FADto } from '../dto';
 import { Tokens, JwtPayload, TempToken } from '../interfaces';
 import { InvalidTokenException, IUser, UserNotFoundException } from '../../../common/src';
 import { JwtSecretType } from '../strategies';
 import { EmailService } from '../../../common/src/email/email.service';
+import { TotpService } from './totp.service';
 
 /**
  * AuthService handles authentication-related operations such as registration,
@@ -26,6 +28,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly emailService: EmailService,
+    private readonly totpService: TotpService,
   ) {}
 
   /**
@@ -57,7 +60,7 @@ export class AuthService {
    * @returns A promise that resolves with the tokens if login is successful.
    * @throws UnauthorizedException if the credentials are invalid or email is not verified.
    */
-  async login(dto: LoginDto): Promise<{ user: Partial<IUser> } | Tokens> {
+  async login(dto: LoginDto): Promise<{ user: Partial<IUser> } | Tokens | TempToken> {
     try {
       // check if user exists
       const user = await this.userRepository.findByEmail(dto.email);
@@ -77,6 +80,17 @@ export class AuthService {
         this.logger.debug(`Password not match`);
         throw new UnauthorizedException('Invalid credentials');
       }
+
+      // Check if 2FA is enabled
+      if (user.twoFactorEnabled) {
+        // Generate a temporary token for 2FA verification
+        const tempToken = this.generateTempToken(user.id);
+        this.logger.log(`2FA required for user ${user.id}, generated temp token`);
+        return {
+          require2FA: true,
+          tempToken,
+        };
+      }
 	
       this.logger.log(`User ${user.id} id logged in.`);
       const tokens = await this.generateTokens(user);
@@ -93,6 +107,152 @@ export class AuthService {
       this.logger.error(`Login error: ${error?.message}`);
       throw new UnauthorizedException('Invalid credentials');
     }
+  }
+
+  /**
+   * Verifies 2FA code and completes login
+   * @param dto - The 2FA verification data
+   * @param tempToken - The temporary token from login
+   * @returns Tokens if verification is successful
+   */
+  async verify2FA(dto: Verify2FADto, tempToken: string): Promise<{ user: Partial<IUser> } & Tokens> {
+    try {
+      // Verify the temp token
+      const payload = this.jwtService.verify(tempToken, {
+        secret: this.configService.get<string>(JwtSecretType.TEMP),
+        maxAge: '5m', // Temp token expires in 5 minutes
+      });
+
+      const user = await this.userRepository.findById(payload.sub);
+      if (!user) {
+        throw new UnauthorizedException('User not found');
+      }
+
+      if (!user.twoFactorEnabled || !user.twoFactorSecret) {
+        throw new UnauthorizedException('2FA not enabled for this user');
+      }
+
+      // Get encryption key from config
+      const encryptionKey = this.configService.get('TOTP_ENCRYPTION_KEY');
+      if (!encryptionKey) {
+        throw new Error('TOTP encryption key not configured');
+      }
+
+      // Decrypt the stored secret
+      const decryptedSecret = this.totpService.decryptSecret(user.twoFactorSecret, encryptionKey);
+
+      // Verify the TOTP code
+      const isValid = this.totpService.verifyToken(decryptedSecret, dto.totpCode);
+      if (!isValid) {
+        throw new UnauthorizedException('Invalid 2FA code');
+      }
+
+      this.logger.log(`2FA verified for user ${user.id}`);
+      const tokens = await this.generateTokens(user);
+      const { password, ...retUser } = user;
+      
+      return {
+        ...tokens,
+        user: retUser
+      };
+    } catch (error) {
+      this.logger.error(`2FA verification error: ${error.message}`);
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      throw new UnauthorizedException('Invalid 2FA code');
+    }
+  }
+
+  /**
+   * Initiates 2FA setup by generating a secret and QR code
+   * @param userId - The user ID
+   * @returns Object containing secret, QR code URL, and otpauth URL
+   */
+  async initiate2FASetup(userId: string): Promise<{
+    secret: string;
+    qrCodeUrl: string;
+    otpauthUrl: string;
+  }> {
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    if (user.twoFactorEnabled) {
+      throw new BadRequestException('2FA is already enabled');
+    }
+
+    // Generate new TOTP secret
+    const totpData = this.totpService.generateSecret(user.email);
+    
+    this.logger.log(`2FA setup initiated for user: ${userId}`);
+    return totpData;
+  }
+
+  /**
+   * Completes 2FA setup by verifying the code and storing the secret
+   * @param userId - The user ID
+   * @param dto - The 2FA setup data containing the TOTP code
+   * @param secret - The TOTP secret to store
+   * @returns Success message
+   */
+  async complete2FASetup(userId: string, dto: Setup2FADto): Promise<void> {
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    if (user.twoFactorEnabled) {
+      throw new BadRequestException('2FA is already enabled');
+    }
+
+    // Verify the TOTP code
+    const isValid = this.totpService.verifyToken(dto.secret, dto.totpCode);
+    if (!isValid) {
+      throw new UnauthorizedException('Invalid 2FA code');
+    }
+
+    // Get encryption key from config
+    const encryptionKey = this.configService.get('TOTP_ENCRYPTION_KEY');
+    if (!encryptionKey) {
+      throw new Error('TOTP encryption key not configured');
+    }
+
+    // Encrypt the secret
+    const encryptedSecret = this.totpService.encryptSecret(dto.secret, encryptionKey);
+
+    // Store the encrypted secret and enable 2FA
+    await this.userRepository.toggle2FA(userId, true, encryptedSecret);
+    
+    // Send confirmation email
+    await this.emailService.sendTwoFactorSetupEmail(
+      user.email,
+      user.name
+    );
+
+    this.logger.log(`2FA setup completed for user: ${userId}`);
+  }
+
+  /**
+   * Sets up 2FA for a user (legacy method - now uses the new flow)
+   */
+  async setupTwoFactor(userId: string): Promise<void> {
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // Enable 2FA in the database
+    await this.userRepository.toggle2FA(userId, true);
+    
+    // Send confirmation email
+    await this.emailService.sendTwoFactorSetupEmail(
+      user.email,
+      user.name
+    );
+
+    this.logger.log(`2FA enabled for user: ${userId}`);
   }
 
   async getCurrentUser(userId: string) {
@@ -153,7 +313,7 @@ export class AuthService {
       const tokens = await this.generateTokens(user);
       
       // Store the new refresh token
-      await this.userRepository.storeRefreshToken(userId, tokens.refreshToken);
+      await this.userRepository.storeRefreshToken(user.id, tokens.refreshToken);
   
       return tokens;
     } catch (error) {
@@ -229,27 +389,6 @@ export class AuthService {
       this.logger.error(`Password reset failed: ${error.message}`);
       throw new UnauthorizedException('Invalid or expired reset token');
     }
-  }
-
-  /**
-   * Sets up 2FA for a user
-   */
-  async setupTwoFactor(userId: string): Promise<void> {
-    const user = await this.userRepository.findById(userId);
-    if (!user) {
-      throw new UnauthorizedException('User not found');
-    }
-
-    // Enable 2FA in the database
-    await this.userRepository.toggle2FA(userId, true);
-    
-    // Send confirmation email
-    await this.emailService.sendTwoFactorSetupEmail(
-      user.email,
-      user.name
-    );
-
-    this.logger.log(`2FA enabled for user: ${userId}`);
   }
 
   /**
@@ -401,6 +540,21 @@ export class AuthService {
       {
         secret: this.configService.get('JWT_RESET_SECRET'),
         expiresIn: '1h', // Token expires in 1 hour
+      }
+    );
+  }
+
+  /**
+   * Generates a temporary token for 2FA verification.
+   * @param userId - The ID of the user for whom to generate the token.
+   * @returns A string representing the generated temporary token.
+   */
+  private generateTempToken(userId: string): string {
+    return this.jwtService.sign(
+      { sub: userId },
+      {
+        secret: this.configService.get<string>(JwtSecretType.TEMP),
+        expiresIn: '5m', // Temp token expires in 5 minutes
       }
     );
   }

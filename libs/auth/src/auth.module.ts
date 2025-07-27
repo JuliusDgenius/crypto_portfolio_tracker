@@ -4,6 +4,7 @@ import { PassportModule } from '@nestjs/passport';
 import { ConfigModule } from '@nestjs/config';
 import { UserModule } from '../../core/src';
 import { AuthService } from './services/auth.service';
+import { TotpService } from './services/totp.service';
 import { EmailService } from '../../common/src/email/email.service';
 import { AuthController } from './controllers';
 import { JwtStrategy, JwtRefreshStrategy } from './strategies';
@@ -21,6 +22,7 @@ import { EmailModule } from '../../common/src/email/email.module';
   controllers: [AuthController],
   providers: [
     AuthService,
+    TotpService,
     JwtStrategy,
     JwtRefreshStrategy,
     PrismaService,
