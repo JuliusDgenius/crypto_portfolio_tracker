@@ -1,8 +1,11 @@
-import { IsString, IsNotEmpty, MaxLength } from 'class-validator';
+import { IsString, IsNotEmpty, MaxLength, IsOptional } from 'class-validator';
 
 export class AddAssetDto {
   @IsString()
-  @IsNotEmpty()
-  @MaxLength(20)
   symbol: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(500)
+  notes?: string;
 }

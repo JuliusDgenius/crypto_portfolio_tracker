@@ -1,6 +1,5 @@
-// libs/core/src/user/dto/update-user.dto.ts
 import { IsEmail, IsString, IsOptional, IsObject } from 'class-validator';
-import { JsonPreferences } from '../interfaces';
+import { JsonPreferences } from '../../../../common/src/interfaces/user.interface';
 
 export class UpdateUserDto {
   @IsEmail()
@@ -18,4 +17,9 @@ export class UpdateUserDto {
   @IsObject()
   @IsOptional()
   preferences?: Partial<JsonPreferences>;
+
+  /**
+   * RBAC roles assigned to the user (optional)
+   */
+  roles?: string[];
 }

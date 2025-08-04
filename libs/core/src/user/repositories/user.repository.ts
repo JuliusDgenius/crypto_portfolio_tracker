@@ -52,6 +52,7 @@ export class UserRepository {
           priceAlerts: false,
         },
       },
+      roles: dto.roles && dto.roles.length > 0 ? dto.roles : ["user"],
     };
 
     try {
@@ -291,6 +292,24 @@ async storeTOTPSecret(userId: string, encryptedSecret: string): Promise<IUser | 
           console.error("Error updating user preferences:", error);
           return null;
       }
+  }
+
+  /**
+   * Update roles for a user (admin only)
+   * @param userId - The user to update
+   * @param roles - The new roles array
+   */
+  async updateUserRoles(userId: string, roles: string[]): Promise<IUser | null> {
+    try {
+      const prismaUser = await this.prisma.user.update({
+        where: { id: userId },
+        data: { roles },
+      });
+      return transformValidatePrismaUser(prismaUser);
+    } catch (error) {
+      this.logger.error('Error updating user roles:', error.message);
+      return null;
+    }
   }
 
   /**

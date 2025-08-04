@@ -3,6 +3,8 @@ import { AppModule } from './app.module';
 import { SwaggerModule } from '@nestjs/swagger';
 import { swaggerConfig } from '../../../libs/config/src';
 import { ValidationPipe } from '@nestjs/common';
+import { RolesGuard } from '../../../libs/common/src/guards/authorization/roles.guard';
+import { Reflector } from '@nestjs/core';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -26,6 +28,8 @@ async function bootstrap() {
       transform: true,
     })
   );
+  const reflector = app.get(Reflector);
+  app.useGlobalGuards(new RolesGuard(reflector));
   // set global prefix from environment variable
   app.setGlobalPrefix(process.env.API_PREFIX);
   

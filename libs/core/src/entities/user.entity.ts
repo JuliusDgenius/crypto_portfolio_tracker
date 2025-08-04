@@ -8,6 +8,10 @@ export class UserEntity {
     createdAt: Date;
     updatedAt: Date;
     lastLoginAt?: Date;
+    /**
+     * RBAC roles assigned to the user
+     */
+    roles: string[];
   
     // Helper method to create full name
     getFullName(): string {

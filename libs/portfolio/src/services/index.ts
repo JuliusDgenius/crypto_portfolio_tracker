@@ -6,3 +6,6 @@ export * from './portfolio.service';
 
 // Historical data service
 export * from './historial.service';
+
+// CSV service
+export * from './csv.service';

@@ -1,4 +1,3 @@
-// libs/core/src/user/dto/create-user.dto.ts
 import { IsEmail, IsString, MinLength, Matches, IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -20,7 +19,17 @@ export class CreateUserDto {
   @IsString()
   @MinLength(8)
   @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{8,}$/, {
-    message: 'Password must contain at least one uppercase letter, one lowercase letter, and one number',
+    message: 'Password must contain at least one uppercase letter,\
+       one lowercase letter, and one number',
   })
   password: string;
+
+  /**
+   * RBAC roles assigned to the user (optional, defaults to ['user'])
+   */
+  @ApiProperty({
+    description: 'Roles assigned to the user',
+    example: ['user'], required: false, isArray: true, type: String
+  })
+  roles?: string[];
 }

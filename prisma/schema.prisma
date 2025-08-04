@@ -1,5 +1,3 @@
-// Updated Prisma Schema with Correct MongoDB ID Handling
-
 // Generator and Data Source
 
 generator client {
@@ -24,6 +22,7 @@ model User {
   twoFactorEnabled  Boolean          @default(false)
   twoFactorSecret   String?          // Encrypted TOTP secret for 2FA
   preferences       Json             // Stores currency, theme, notifications
+  roles             Role[]
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
   refreshTokens      RefreshToken[]  @relation("UserToRefreshToken")
@@ -105,10 +104,23 @@ model Asset {
   transactions    Transaction[]     @relation("AssetToTransaction")
  
   // Back reference to Watchlist
-  watchlists      Watchlist[]     @relation("WatchlistToAsset", fields: [watchlistIds], references: [id])
-  watchlistIds    String[]        @db.ObjectId
+  watchlistItems  WatchlistItem[]  @relation("WatchlistAsset")
 
   @@index([portfolioId, symbol])
+}
+
+model WatchlistItem {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  watchlist   Watchlist @relation("WatchlistToWatchlistItem", fields: [watchlistId], references: [id], onDelete: Cascade)
+  watchlistId String    @db.ObjectId
+
+  asset       Asset     @relation("WatchlistAsset", fields: [assetId], references: [id], onDelete: Cascade)
+  assetId     String    @db.ObjectId
+
+  notes       String?   // Optional: "I want to buy when it hits $30k"
+  createdAt   DateTime  @default(now())
+
+  @@unique([watchlistId, assetId]) // Prevent duplicate entries
 }
 
 model Watchlist {
@@ -116,14 +128,12 @@ model Watchlist {
   userId          String           @db.ObjectId
   name            String
   description     String?
-  cryptocurrencies Json             // Array of crypto objects
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   user            User             @relation("UserToWatchlist", fields: [userId], references: [id], onDelete: Cascade)
 
   // Relationship with assets
-  watchedAssets   Asset[]   @relation("WatchlistToAsset", fields: [assetIds], references: [id])
-  assetIds        String[]  @db.ObjectId
+  items   WatchlistItem[]  @relation("WatchlistToWatchlistItem")
 
   // Relationship with alerts
   alerts          Alert[]   @relation(fields: [alertIds], references: [id])
@@ -205,4 +215,9 @@ enum AlertStatus {
   ACTIVE
   TRIGGERED
   DISABLED
+}
+
+enum Role {
+  ADMIN
+  USER
 }

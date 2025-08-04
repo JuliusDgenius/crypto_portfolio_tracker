@@ -1,5 +1,5 @@
 import {
-    Controller, Post, Get, Body, HttpCode, HttpStatus, UseGuards, Logger, Query, Delete,
+    Controller, Post, Get, Body, HttpCode, HttpStatus, UseGuards, Logger, Query, Delete, BadRequestException,
   } from '@nestjs/common';
 import { AuthService } from '../services/auth.service';
 import { JwtRefreshGuard  } from '../guards';
@@ -15,13 +15,15 @@ import {
 } from '@nestjs/swagger';
 import { User } from '@prisma/client';
 import { IUser } from '../../../common/src';
+import { UserRepository } from '../../../core/src/user/repositories/user.repository';
+import { Roles } from '../../../common/src/decorators/roles.decorator';
 
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
     private readonly logger = new Logger(AuthController.name);
     
-    constructor(private readonly authService: AuthService) {}
+    constructor(private readonly authService: AuthService, private readonly userRepository: UserRepository) {}
 
     @Post('register')
     @ApiOperation({ 
@@ -374,6 +376,19 @@ export class AuthController {
       const user = await this.authService.getCurrentUser(userId);
       this.logger.log('User profile found:', user);
       return user;
+    }
+
+    @Post('admin/update-roles')
+    @ApiOperation({ summary: 'Update user roles (admin only)' })
+    @ApiResponse({ status: 200, description: 'User roles updated' })
+    @ApiResponse({ status: 400, description: 'Failed to update user roles' })
+    @Roles('admin')
+    async updateUserRoles(@Body() body: { userId: string; roles: string[] }) {
+      const updated = await this.userRepository.updateUserRoles(body.userId, body.roles);
+      if (!updated) {
+        throw new BadRequestException('Failed to update user roles');
+      }
+      return { message: 'User roles updated', user: updated };
     }
 
     @Delete('account-delete')

@@ -2,6 +2,7 @@ import {
     Injectable,
     NotFoundException,
     ForbiddenException,
+    Logger,
     ConflictException } from '@nestjs/common';
 import {
     CreateWatchlistDto,
@@ -10,10 +11,12 @@ import {
 import { PrismaService } from '../../../database/src';
 import { Watchlist, Prisma } from '@prisma/client';
 import { PriceService } from '../../../crypto/src/services/price.service';
-import { WatchlistMetrics } from '../types/watchlist.types';
+import { WatchlistAsset, WatchlistMetrics } from '../types/watchlist.types';
 
 @Injectable()
 export class WatchlistService {
+  private readonly logger = new Logger(WatchlistService.name);
+
   constructor(
     private prisma: PrismaService,
     private priceService: PriceService,
@@ -39,8 +42,6 @@ export class WatchlistService {
         userId,
         name: dto.name,
         description: dto.description,
-        cryptocurrencies: [], // Initialize empty
-        assetIds: [],
         alertIds: [],
       },
     });
@@ -78,6 +79,10 @@ export class WatchlistService {
           }
         },
       }),
+      // Delete all items associated with watchlist
+      this.prisma.watchlistItem.deleteMany({
+        where: {watchlistId: watchlistId}
+      }),
       // Delete the watchlist
       this.prisma.watchlist.delete({
         where: { id: watchlistId },
@@ -93,30 +98,46 @@ export class WatchlistService {
     const watchlist = await this.validateWatchlistAccess(
         userId, watchlistId
     );
+    this.logger.debug(`Returned watchlist: ${JSON.stringify(watchlist)}`);
+    const trimmedSymbol = dto.symbol.trim();
     
     // Check if asset already exists in watchlist
-    const cryptocurrencies = watchlist.cryptocurrencies as any[];
-    if (cryptocurrencies.some(c => c.symbol === dto.symbol.toUpperCase())) {
-      throw new ConflictException('Asset already in watchlist');
+    const asset = await this.prisma.asset.findUnique({
+      where: { id: trimmedSymbol },
+    });
+    if (!asset) {
+      // TODO: If asset not found, perhaps trigger a fetch from an external API and store it
+      // For now, we'll throw an error.
+      throw new NotFoundException(`Asset with ID ${dto.symbol} not found.`);
     }
 
-    // Get current price and info
-    const assetInfo = await this.priceService.getAssetInfo(dto.symbol);
+    const assetId = asset.id;
 
-    return this.prisma.watchlist.update({
-      where: { id: watchlistId },
+    // Check if asset already exists in watchlist via WatchlistItem
+    const existingWatchlistItem = await this.prisma.watchlistItem.findFirst({
+      where: { watchlistId, assetId }
+    });
+    if (existingWatchlistItem) {
+      throw new ConflictException('Asset already in this watchlist');
+    }
+
+    // Create the WatchlistItem
+    await this.prisma.watchlistItem.create({
       data: {
-        cryptocurrencies: {
-          push: {
-            symbol: dto.symbol.toUpperCase(),
-            name: assetInfo.name,
-            currentPrice: assetInfo.price,
-            addedAt: new Date(),
+        watchlistId,
+        assetId,
+        notes: dto.notes,
+      }
+    });
+
+    return this.prisma.watchlist.findUnique({
+      where: { id: watchlistId },
+      include: {
+        items: {
+          include: {
+            asset: true,
           },
         },
-      },
-      include: {
-        watchedAssets: true,
         alerts: true,
       },
     });
@@ -125,22 +146,32 @@ export class WatchlistService {
   async removeAssetFromWatchlist(
     userId: string,
     watchlistId: string,
-    symbol: string,
+    assetId: string,
   ): Promise<Watchlist> {
-    const watchlist = await this.validateWatchlistAccess(userId, watchlistId);
+    await this.validateWatchlistAccess(userId, watchlistId);
     
-    const cryptocurrencies = watchlist.cryptocurrencies as any[];
-    const updatedCryptocurrencies = cryptocurrencies.filter(
-      c => c.symbol !== symbol.toUpperCase(),
-    );
+    const watchlistItemToDelete = await this.prisma.watchlistItem.findFirst({
+      where: {
+        watchlistId, assetId,
+      }
+    });
+    if (!watchlistItemToDelete) {
+      throw new NotFoundException('Asset not found in this watchlist');
+    }
 
-    return this.prisma.watchlist.update({
+    await this.prisma.watchlistItem.delete({
+      where: { id: watchlistItemToDelete.id },
+    });
+
+    // Return updated watchlist items with their assets
+    return this.prisma.watchlist.findUnique({
       where: { id: watchlistId },
-      data: {
-        cryptocurrencies: updatedCryptocurrencies,
-      },
       include: {
-        watchedAssets: true,
+        items: {
+          include: {
+            asset: true,
+          },
+        },
         alerts: true,
       },
     });
@@ -150,7 +181,11 @@ export class WatchlistService {
     return this.prisma.watchlist.findMany({
       where: { userId },
       include: {
-        watchedAssets: true,
+        items: {
+          include: {
+            asset: true,
+          },
+        },
         alerts: true,
       },
       orderBy: {
@@ -169,47 +204,85 @@ export class WatchlistService {
     userId: string, watchlistId: string
   ): Promise<WatchlistMetrics> {
     const watchlist = await this.validateWatchlistAccess(userId, watchlistId);
-    const cryptocurrencies = watchlist.cryptocurrencies as any[];
 
-    // Update current prices
-    const updatedCryptos = await Promise.all(
-      cryptocurrencies.map(async (crypto) => {
-        const priceInfo = await this.priceService.getAssetInfo(crypto.symbol);
+    // Extract asset details from watchlist .items
+    const assetsInWatchlist: WatchlistAsset[] = watchlist.items.map(
+      (item) => ({
+        id: item.asset.id,
+        symbol: item.asset.symbol,
+        name: item.asset.name,
+        currentPrice: item.asset.currentPrice,
+        addedAt: item.createdAt
+      })
+    );
+
+    // Update current prices for metrics
+    const updatedAssets = await Promise.all(
+      assetsInWatchlist.map(async (assetDetail) => {
+        const priceInfo = await this.priceService.getAssetInfo(
+          assetDetail.symbol,
+        );
         return {
-          ...crypto,
+          ...assetDetail,
           currentPrice: priceInfo.price,
         };
       }),
     );
 
     // Sort by price performance
-    const sortedByPerformance = [...updatedCryptos].sort(
-        (a, b) => b.currentPrice - a.currentPrice,
-      );
-  
-      // Sort by recently added
-      const sortedByDate = [...updatedCryptos].sort(
-        (a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime(),
-      );
+    const sortedByPerformance = [...updatedAssets].sort(
+      (a, b) => b.currentPrice - a.currentPrice,
+    );
+
+    // refetch with `createdAt` from `WatchlistItem` to enable this sorting by recently.
+    const watchlistWithItemDates = await this.prisma.watchlist.findUnique({
+      where: { id: watchlistId },
+      include: {
+        items: {
+          include: {
+            asset: true,
+          },
+          orderBy: {
+            createdAt: 'desc', // Order WatchlistItems by creation date
+          },
+        },
+      },
+    });
+
+    const recentlyAddedAssets: WatchlistAsset[] =
+      watchlistWithItemDates?.items.map((item) => ({
+        id: item.asset.id,
+        symbol: item.asset.symbol,
+        name: item.asset.name,
+        currentPrice: item.asset.currentPrice,
+      })) || [];
+
   
       return {
-        totalAssets: cryptocurrencies.length,
+        totalAssets: assetsInWatchlist.length,
         topPerformers: sortedByPerformance.slice(0, 5),
-        recentlyAdded: sortedByDate.slice(0, 5),
-        alerts: watchlist.alertIds.length,
+        recentlyAdded: recentlyAddedAssets.slice(0, 5),
+        alerts: watchlist.alerts.length,
       };
     }
 
     private async validateWatchlistAccess(
         userId: string,
         watchlistId: string,
-      ): Promise<Watchlist> {
+      ): Promise<Watchlist & { items: 
+          (Prisma.WatchlistItemGetPayload<{ include: { asset: true } }> 
+          & { asset: { id: string, symbol: string, name: string, currentPrice: number } })[]; 
+          alerts: Prisma.AlertGetPayload<{}>[]; }> {
         const watchlist = await this.prisma.watchlist.findFirst({
           where: {
             AND: [{ id: watchlistId }, { userId }],
           },
           include: {
-            watchedAssets: true,
+            items: {
+              include: {
+                asset: true,
+              },
+            },
             alerts: true,
           },
         });
@@ -222,7 +295,12 @@ export class WatchlistService {
           throw new ForbiddenException('Access denied');
         }
     
-        return watchlist;
+        // This cast helps satisfy the return type based on the include.
+        // TODO: In a real application, you might define more specific types.
+        return watchlist as Watchlist & 
+          { items: (Prisma.WatchlistItemGetPayload<{ include: { asset: true } }> & 
+          { asset: { id: string, symbol: string, name: string, currentPrice: number } })[]; 
+          alerts: Prisma.AlertGetPayload<{}>[]; };
     }
 }
     

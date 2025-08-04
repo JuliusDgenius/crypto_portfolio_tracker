@@ -7,7 +7,7 @@ A robust cryptocurrency portfolio management application that enables real-time 
 - **User Authentication & Security**
   - Secure user registration and login
   - JWT-based authentication
-  - Role-based access control
+  - Role-based access control (RBAC) with admin/user roles
   - 2FA support
 
 - **Portfolio Management**
@@ -29,6 +29,18 @@ A robust cryptocurrency portfolio management application that enables real-time 
   - CSV import/export functionality
   - Exchange API integration
   - Automated balance updates
+
+## Role-Based Access Control (RBAC)
+
+- Users have one or more roles (e.g., 'user', 'admin').
+- Roles are stored in the database and included in JWT tokens.
+- Endpoints can be restricted to specific roles using the @Roles decorator.
+- Admins can update user roles via the `/auth/admin/update-roles` endpoint:
+
+  - **POST /auth/admin/update-roles**
+    - Body: `{ "userId": "<userId>", "roles": ["user", "admin"] }`
+    - Requires: Admin role
+    - Description: Updates the roles for a user.
 
 ## Technologies Used
 

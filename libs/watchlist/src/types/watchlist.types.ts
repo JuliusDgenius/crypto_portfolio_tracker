@@ -1,9 +1,10 @@
 // types/watchlist.types.ts
 export interface WatchlistAsset {
+    id: string;
     symbol: string;
     name: string;
     currentPrice: number;
-    addedAt: Date;
+    addedAt?: Date;
   }
   
   export interface WatchlistMetrics {

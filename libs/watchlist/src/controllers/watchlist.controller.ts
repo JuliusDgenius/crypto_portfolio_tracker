@@ -17,7 +17,8 @@ import {
   UpdateWatchlistDto,
   AddAssetDto,
 } from '../dto';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiBearerAuth, ApiSecurity } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam,
+  ApiBody, ApiSecurity } from '@nestjs/swagger';
 
 @ApiTags('watchlists')
 @ApiSecurity('JWT-auth')
@@ -26,7 +27,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiBearerAuth, A
 export class WatchlistController {
   constructor(private watchlistService: WatchlistService) {}
 
-  @Post()
+  @Post('create')
   @ApiOperation({ 
     summary: 'Create a new watchlist',
     description: 'Creates a new watchlist for the authenticated user' 
@@ -38,7 +39,6 @@ export class WatchlistController {
         value: {
           name: "Tech Stocks",
           description: "Top technology companies",
-          isPublic: true
         }
       }
     }
@@ -51,7 +51,6 @@ export class WatchlistController {
         id: "550e8400-e29b-41d4-a716-446655440000",
         name: "Tech Stocks",
         description: "Top technology companies",
-        isPublic: true,
         assets: [],
         createdAt: "2024-01-03T12:00:00Z",
         updatedAt: "2024-01-03T12:00:00Z"
@@ -65,7 +64,7 @@ export class WatchlistController {
     return this.watchlistService.createWatchlist(userId, dto);
   }
 
-  @Put(':id')
+  @Put(':id/update')
   @ApiOperation({ summary: 'Update a watchlist' })
   @ApiParam({ name: 'id', example: '550e8400-e29b-41d4-a716-446655440000' })
   @ApiBody({ 
@@ -75,7 +74,6 @@ export class WatchlistController {
         value: {
           name: "Updated Tech Stocks",
           description: "Updated description",
-          isPublic: false
         }
       }
     }
@@ -87,7 +85,6 @@ export class WatchlistController {
         id: "550e8400-e29b-41d4-a716-446655440000",
         name: "Updated Tech Stocks",
         description: "Updated description",
-        isPublic: false,
         updatedAt: "2024-01-03T12:00:00Z"
       }
     }
@@ -100,10 +97,10 @@ export class WatchlistController {
     return this.watchlistService.updateWatchlist(userId, watchlistId, dto);
   }
 
-  @Delete(':id')
+  @Delete('delete/:id')
   @ApiOperation({ summary: 'Delete a watchlist' })
   @ApiParam({ name: 'id', example: '550e8400-e29b-41d4-a716-446655440000' })
-  @ApiResponse({ status: HttpStatus.OK })
+  @ApiResponse({ status: HttpStatus.NO_CONTENT })
   async deleteWatchlist(
     @CurrentUser('id') userId: string,
     @Param('id') watchlistId: string,
@@ -117,11 +114,10 @@ export class WatchlistController {
   @ApiBody({ 
     type: AddAssetDto,
     examples: {
-      asset: {
+      addAsset: {
         value: {
-          symbol: "AAPL",
-          notes: "Potential breakout",
-          alertPrice: 150.00
+          symbol: 'BTC',
+          notes: 'Consider buying if price drops to $150'
         }
       }
     }
@@ -131,12 +127,25 @@ export class WatchlistController {
     schema: {
       example: {
         id: "550e8400-e29b-41d4-a716-446655440000",
-        assets: [{
-          symbol: "AAPL",
-          notes: "Potential breakout",
-          alertPrice: 150.00,
-          addedAt: "2024-01-03T12:00:00Z"
-        }]
+        items: [{id: 'watchlistItemObjectId',
+          watchlistId: '550e8400-e29b-41d4-a716-446655440000',
+          notes: 'Consider buying if price drops to $150',
+          createdAt: '2024-01-03T12:00:00Z',
+          asset: {
+            // Full asset object details
+            id: 'someAssetObjectId',
+            symbol: 'BTC',
+            name: 'Bitcoin',
+            quantity: 0,
+            averageBuyPrice: 0,
+            currentPrice: 40000,
+            value: 0,
+            profitLoss: 0,
+            allocation: 0,
+            lastUpdated: '2024-01-03T12:00:00Z',
+            portfolioId: 'somePortfolioId',
+          },
+        },]
       }
     }
   })
@@ -148,17 +157,17 @@ export class WatchlistController {
     return this.watchlistService.addAssetToWatchlist(userId, watchlistId, dto);
   }
 
-  @Delete(':id/assets/:symbol')
+  @Delete(':id/assets/:assetId')
   @ApiOperation({ summary: 'Remove an asset from watchlist' })
   @ApiParam({ name: 'id', example: '550e8400-e29b-41d4-a716-446655440000' })
-  @ApiParam({ name: 'symbol', example: 'AAPL' })
+  @ApiParam({ name: 'assetId', example: 'someAssetObjectId' })
   @ApiResponse({ status: HttpStatus.OK })
   async removeAssetFromWatchlist(
     @CurrentUser('id') userId: string,
     @Param('id') watchlistId: string,
-    @Param('symbol') symbol: string,
+    @Param('assetId') assetId: string,
   ) {
-    return this.watchlistService.removeAssetFromWatchlist(userId, watchlistId, symbol);
+    return this.watchlistService.removeAssetFromWatchlist(userId, watchlistId, assetId);
   }
 
   @Get()
@@ -168,19 +177,29 @@ export class WatchlistController {
     schema: {
       example: [{
         id: "550e8400-e29b-41d4-a716-446655440000",
+        watchlistId: '550e8400-e29b-41d4-a716-446655440000',
         name: "Tech Stocks",
         description: "Top technology companies",
-        isPublic: true,
-        assets: [{
-          symbol: "AAPL",
-          notes: "Potential breakout",
-          alertPrice: 150.00,
-          addedAt: "2024-01-03T12:00:00Z"
-        }],
-        createdAt: "2024-01-03T12:00:00Z",
-        updatedAt: "2024-01-03T12:00:00Z"
-      }]
-    }
+        items: [
+          {
+              id: 'watchlistItemObjectId',
+              watchlistId: '550e8400-e29b-41d4-a716-446655440000',
+              assetId: 'someAssetObjectId',
+              notes: 'Potential breakout',
+              createdAt: '2024-01-03T12:00:00Z',
+              asset: {
+                id: 'someAssetObjectId',
+                symbol: 'AAPL',
+                name: 'Apple Inc.',
+                currentPrice: 150.0,
+              },
+          },
+      ],
+      createdAt: '2024-01-03T12:00:00Z',
+      updatedAt: '2024-01-03T12:00:00Z',
+    },
+  ],
+}
   })
   async getWatchlists(@CurrentUser('id') userId: string) {
     return this.watchlistService.getWatchlists(userId);
@@ -189,20 +208,29 @@ export class WatchlistController {
   @Get(':id')
   @ApiOperation({ summary: 'Get watchlist by ID' })
   @ApiParam({ name: 'id', example: '550e8400-e29b-41d4-a716-446655440000' })
-  @ApiResponse({ 
+  @ApiResponse({
     status: HttpStatus.OK,
     schema: {
       example: {
-        id: "550e8400-e29b-41d4-a716-446655440000",
-        name: "Tech Stocks",
-        assets: [{
-          symbol: "AAPL",
-          notes: "Potential breakout",
-          alertPrice: 150.00,
-          addedAt: "2024-01-03T12:00:00Z"
-        }]
-      }
-    }
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        name: 'Tech Stocks',
+        items: [
+          {
+            id: 'watchlistItemObjectId',
+            watchlistId: '550e8400-e29b-41d4-a716-446655440000',
+            assetId: 'someAssetObjectId',
+            notes: 'Potential breakout',
+            createdAt: '2024-01-03T12:00:00Z',
+            asset: {
+              id: 'someAssetObjectId',
+              symbol: 'AAPL',
+              name: 'Apple Inc.',
+              currentPrice: 150.0,
+            },
+          },
+        ],
+      },
+    },
   })
   async getWatchlistById(
     @CurrentUser('id') userId: string,

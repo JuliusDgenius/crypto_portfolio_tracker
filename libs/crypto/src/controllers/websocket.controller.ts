@@ -1,4 +1,3 @@
-// controllers/websocket.controller.ts
 import { Controller, Sse, MessageEvent, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Observable } from 'rxjs';

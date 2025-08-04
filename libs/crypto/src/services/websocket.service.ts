@@ -2,6 +2,7 @@ import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { WebSocket } from 'ws';
 import { Subject, BehaviorSubject } from 'rxjs';
 import { Logger } from '@nestjs/common';
+import { ConfigService } from '../../../config/src';
 
 // Define clear types for our WebSocket messages
 interface PriceUpdate {
@@ -22,21 +23,32 @@ enum ConnectionState {
 export class WebSocketService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(WebSocketService.name);
   private ws: WebSocket;
+  private readonly binance_ws_url: string;
   
   // Use BehaviorSubject for connection state to always have a current value
   private readonly connectionState = new BehaviorSubject<ConnectionState>(ConnectionState.DISCONNECTED);
   private readonly priceUpdates = new Subject<PriceUpdate>();
   
   // Configuration parameters
-  private reconnectAttempts = 0;
-  private readonly maxReconnectAttempts = 5;
-  private readonly reconnectDelay = 5000; // 5 seconds
-  private readonly pingInterval = 30000;   // 30 seconds
+  private reconnectAttempts: number;
+  private readonly maxReconnectAttempts: number;
+  private readonly reconnectDelay: number; // 5 seconds
+  private readonly pingInterval: number;   // 30 seconds
   private pingTimeout: NodeJS.Timeout;
   
   // Public observables for subscribers
   public priceUpdates$ = this.priceUpdates.asObservable();
   public connectionState$ = this.connectionState.asObservable();
+
+  constructor(
+  private readonly configService: ConfigService,
+  ) {
+    this.binance_ws_url = this.configService.get<string>('BINANCE_WEBSOCKET_URL');
+    this.reconnectAttempts = this.configService.get<number>('RECONNECT_ATTEMPTS');
+    this.maxReconnectAttempts = this.configService.get<number>('MAX_RECONNECT_ATTEMPTS');
+    this.reconnectDelay = this.configService.get<number>('RECONNECT_DELAY');
+    this.pingInterval = this.configService.get<number>('PING_INTERVAL');
+  }
 
   onModuleInit() {
     this.initializeConnection();
@@ -54,7 +66,7 @@ export class WebSocketService implements OnModuleInit, OnModuleDestroy {
 
   private connect() {
     try {
-      this.ws = new WebSocket('wss://stream.binance.com:9443/ws/!ticker@arr');
+      this.ws = new WebSocket(this.binance_ws_url);
       this.setupEventHandlers();
     } catch (error) {
       this.logger.error(`Failed to create WebSocket connection: ${error.message}`);

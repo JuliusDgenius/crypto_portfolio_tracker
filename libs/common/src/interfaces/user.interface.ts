@@ -1,13 +1,19 @@
+/**
+ * User interface for application users, including RBAC roles.
+ */
 export interface IUser {
   id: string;
   email: string;
-  password: string;
-  name?: string;
-  profilePicture?: string;
+  name: string | null;
+  password?: string;
   verified: boolean;
   twoFactorEnabled: boolean;
   twoFactorSecret?: string; // Encrypted TOTP secret for 2FA
   preferences: JsonPreferences;
+  /**
+   * RBAC roles assigned to the user
+   */
+  roles: string[];
   createdAt: Date;
   updatedAt: Date;
 }

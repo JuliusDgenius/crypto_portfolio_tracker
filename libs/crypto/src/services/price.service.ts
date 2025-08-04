@@ -340,7 +340,9 @@ export class PriceService {
  */
 async getAssetInfo(symbol: string): Promise<IAssetInfo> {
   this.logger.debug(`Getting asset info for ${symbol}`);
-  const cacheKey = `${this.cacheConfig.currentPrice.prefix}info:${symbol}`;
+  const geckoId = this.coinGeckoIdMap[symbol.toUpperCase()] || symbol.toLowerCase();
+  this.logger.debug(`Gecko ID for ${symbol}: ${geckoId}`);
+  const cacheKey = `${this.cacheConfig.currentPrice.prefix}info:${geckoId}`;
   
   // Check cache first
   const cachedInfo = await this.redisService.get(cacheKey);
@@ -617,4 +619,44 @@ async getAvailableCryptos(): Promise<Array<{ symbol: string; name: string; curre
       }
     };
   }
+
+  private readonly coinGeckoIdMap: { [key: string]: string } = {
+    'BTC': 'bitcoin',
+    'ETH': 'ethereum',
+    'BNB': 'binancecoin',
+    'ADA': 'cardano',
+    'SOL': 'solana',
+    'DOT': 'polkadot',
+    'AVAX': 'avalanche',
+    'MATIC': 'polygon',
+    'LINK': 'chainlink',
+    'UNI': 'uniswap',
+    'ATOM': 'cosmos',
+    'LTC': 'litecoin',
+    'BCH': 'bitcoin-cash',
+    'XRP': 'ripple',
+    'DOGE': 'dogecoin',
+    'SHIB': 'shiba-inu',
+    'TRX': 'tron',
+    'ETC': 'ethereum-classic',
+    'XLM': 'stellar',
+    'VET': 'vechain',
+    'FIL': 'filecoin',
+    'ALGO': 'algorand',
+    'ICP': 'internet-computer',
+    'XMR': 'monero',
+    'AAPL': 'apple',
+    'GOOGL': 'google',
+    'MSFT': 'microsoft',
+    'AMZN': 'amazon',
+    'FB': 'facebook',
+    'TWTR': 'twitter',
+    'NFLX': 'netflix',
+    'TSLA': 'tesla',
+    'NVDA': 'nvidia',
+    'AMD': 'amd',
+    'INTC': 'intel',
+    'ASML': 'asml-holding',
+    // Add more mappings as needed
+  };
 }

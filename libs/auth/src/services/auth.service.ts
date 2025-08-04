@@ -13,6 +13,7 @@ import { InvalidTokenException, IUser, UserNotFoundException } from '../../../co
 import { JwtSecretType } from '../strategies';
 import { EmailService } from '../../../common/src/email/email.service';
 import { TotpService } from './totp.service';
+import { Role } from '@prisma/client';
 
 /**
  * AuthService handles authentication-related operations such as registration,
@@ -502,6 +503,7 @@ export class AuthService {
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
+      roles: user.roles as Role[],
       ...(user.name && {name: user.name}),
     };
 
