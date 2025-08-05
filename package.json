@@ -45,6 +45,7 @@
     "@types/passport-jwt": "^4.0.1",
     "@types/speakeasy": "^2.0.10",
     "bcrypt": "^5.1.1",
+    "@nestjs/cli": "^10.4.9",
     "binance-api-node": "^0.12.9",
     "bull": "^4.12.0",
     "ccxt": "^4.4.46",
@@ -73,7 +74,6 @@
   },
   "devDependencies": {
     "@golevelup/ts-jest": "^0.6.1",
-    "@nestjs/cli": "^10.4.9",
     "@nestjs/schematics": "^10.0.0",
     "@nestjs/testing": "^10.0.0",
     "@swc-node/register": "~1.9.1",
