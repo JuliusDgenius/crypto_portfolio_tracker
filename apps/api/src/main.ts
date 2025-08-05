@@ -5,13 +5,15 @@ import { swaggerConfig } from '../../../libs/config/src';
 import { ValidationPipe } from '@nestjs/common';
 import { RolesGuard } from '../../../libs/common/src/guards/authorization/roles.guard';
 import { Reflector } from '@nestjs/core';
+import helmet from 'helmet';
+import compression from 'compression';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
    // Enable cors
    app.enableCors({
-     origin: 'http://localhost:5173',
+     origin: ['https://cryptocurrency-tracker-frontend.vercel.app/', 'http://localhost:5173'],
      credentials: true,
      allowedHeaders: ['Content-Type', 'Authorization'],
    });
@@ -28,10 +30,17 @@ async function bootstrap() {
       transform: true,
     })
   );
+
+  // Secure HTTP headers
+  app.use(helmet());
+  // Compress responses
+  app.use(compression());
+
   const reflector = app.get(Reflector);
   app.useGlobalGuards(new RolesGuard(reflector));
   // set global prefix from environment variable
   app.setGlobalPrefix(process.env.API_PREFIX);
+  
   
   await app.listen(process.env.PORT ?? 3000);
 }

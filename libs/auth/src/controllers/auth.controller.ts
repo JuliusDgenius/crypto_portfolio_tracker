@@ -1,12 +1,12 @@
 import {
-    Controller, Post, Get, Body, HttpCode, HttpStatus, UseGuards, Logger, Query, Delete, BadRequestException,
+  Controller, Post, Get, Body, HttpCode, HttpStatus, UseGuards, Logger, Query, Delete, BadRequestException,
   } from '@nestjs/common';
 import { AuthService } from '../services/auth.service';
 import { JwtRefreshGuard  } from '../guards';
 import { RegisterDto, LoginDto, ResetPasswordDto,
-         RequestPasswordResetDto, DeleteAccountDto,
-         Setup2FADto, Verify2FADto
-        } from '../dto';
+  RequestPasswordResetDto, DeleteAccountDto,
+  Setup2FADto, Verify2FADto
+} from '../dto';
 import { JwtAuthGuard } from '../guards';
 import { TempToken, Tokens } from '../';
 import { CurrentUser } from '../decorators';
@@ -23,7 +23,10 @@ import { Roles } from '../../../common/src/decorators/roles.decorator';
 export class AuthController {
     private readonly logger = new Logger(AuthController.name);
     
-    constructor(private readonly authService: AuthService, private readonly userRepository: UserRepository) {}
+    constructor(
+      private readonly authService: AuthService,
+      private readonly userRepository: UserRepository
+    ) {}
 
     @Post('register')
     @ApiOperation({ 
@@ -52,28 +55,28 @@ export class AuthController {
         }
     })
     @ApiResponse({ 
-        status: 201, 
-        description: 'User registered successfully', 
-        schema: {
+      status: 201, 
+      description: 'User registered successfully', 
+      schema: {
+        properties: {
+          user: {
+            type: 'object',
             properties: {
-                user: {
-                    type: 'object',
-                    properties: {
-                        id: { type: 'string', example: '123e4567-e89b-12d3-a456-426614174000' },
-                        email: { type: 'string', example: 'user@example.com' },
-                        name: { type: 'string', example: 'John Doe' },
-                        createdAt: { type: 'string', format: 'date-time' }
-                    }
-                }
+              id: { type: 'string', example: '123e4567-e89b-12d3-a456-426614174000' },
+              email: { type: 'string', example: 'user@example.com' },
+              name: { type: 'string', example: 'John Doe' },
+              createdAt: { type: 'string', format: 'date-time' }
             }
+          }
         }
+      }
     })
     @ApiResponse({ 
-        status: 400, 
-        description: 'Invalid registration data or email already exists'
+      status: 400, 
+      description: 'Invalid registration data or email already exists'
     })
     async register(@Body() registerDto: RegisterDto) {
-        return this.authService.register(registerDto);
+      return this.authService.register(registerDto);
     }
 
     @Post('login')

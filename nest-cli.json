@@ -6,6 +6,15 @@
   "sourceRoot": "apps/api/src",
   "compilerOptions": {
     "deleteOutDir": true,
+    "webpack": true,
+    "assets": [
+      {
+        "include": "libs/common/src/email/templates/**/*.hbs",
+        "outDir": "dist/apps/api/email/templates",
+        "watchAssets": true
+      }
+    ],
+    "watchAssets": true,
     "plugins": [
       {
         "name": "@nestjs/swagger",

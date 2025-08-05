@@ -38,14 +38,27 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
   async onModuleInit() {
     try {
       await this.executeWithRetry(() => this.$connect());
-      this.logger.log('Successfully connected to database');
+      this.logger.log('✅ Successfully connected to database');
     } catch (error) {
-      this.logger.error('Failed to connect to database', error.stack);
+      // Log Prisma-specific connection errors
+      const isPrismaInitError =
+      error.name === 'PrismaClientInitializationError' ||
+      error.name === 'PrismaClientUnknownRequestError';
+      
+      const isMongoFatalConnectionError =
+      /Server selection timeout|received fatal alert/i.test(error.message || '');
+
+    this.logger.error('❌ Failed to connect to database', error.stack);
+
+    if (isPrismaInitError || isMongoFatalConnectionError) {
       throw new BaseException(
-        'Database connection failed',
+        'Database connection failed. Check network, credentials, and MongoDB Atlas settings.',
         'DATABASE_CONNECTION_ERROR',
         500
       );
+    }
+
+    throw error; // Re-throw unknown errors
     }
   }
 
@@ -111,7 +124,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
    * @param error - Error to check
    * @returns boolean indicating if operation should be retried
    */
-  private shouldRetry(error: { code?: string }): boolean {
+  private shouldRetry(error: { code?: string; message?: string }): boolean {
     const retryableCodes = [
       'P1001', // Connection error
       'P1002', // Connection timed out
@@ -120,7 +133,20 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
       'P2024', // Connection pool timeout
     ];
 
-    return error?.code ? retryableCodes.includes(error.code) : false;
+    const retryableMessages = [
+      'server selection timeout',
+      'received fatal alert',
+      'connection refused',
+      'no primary',
+    ];
+  
+    const message = error?.message?.toLowerCase() || '';
+  
+    return (
+      (error?.code && retryableCodes.includes(error.code)) ||
+      retryableMessages.some((msg) => message.includes(msg))
+    );
+  
   }
 
   /**

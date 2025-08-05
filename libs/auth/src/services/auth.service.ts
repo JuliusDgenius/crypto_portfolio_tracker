@@ -38,7 +38,12 @@ export class AuthService {
    * @returns A promise that resolves when the registration is complete.
    */
   async register(dto: RegisterDto): Promise<{user: Partial<IUser>}> {
-    const user = await this.userRepository.create(dto);
+    try {
+      const userRoles = dto.roles && dto.roles.length > 0
+      ? dto.roles.map(role => role.toUpperCase() as Role)
+      : [Role.USER];
+    
+    const user = await this.userRepository.create({ ...dto, roles: userRoles });
     const verificationToken = this.generateVerificationToken(user.id!);
     const tokens = await this.generateTokens(user);
 
@@ -52,7 +57,11 @@ export class AuthService {
     this.logger.log('Verification email sent');
 
     delete user.password;
-    return {  user, ...tokens }
+    return {  user, ...tokens } 
+    } catch (error) {
+      this.logger.error(`Registration error: ${error?.message}`);
+      throw new BadRequestException('Failed to register user');
+    }
   }
 
   /**

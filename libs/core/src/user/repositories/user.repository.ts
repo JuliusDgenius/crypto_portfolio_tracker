@@ -22,15 +22,20 @@ export class UserRepository {
       throw new Error('Email and password are required.');
     }
 
-    // Check if user exists already
-    const existingUser = await this.prisma.user.findUnique({
+    try {
+     // Check if user exists already
+      const existingUser = await this.prisma.user.findUnique({
       where: {
         email: dto.email,
       },
     });
 
     if (existingUser) {
-      throw new ConflictException("Email already exist");
+        throw new ConflictException("Email already exist");
+      } 
+    } catch (error) {
+      this.logger.error("Error checking if user exists:", error);
+      throw new Error("Failed to check if user exists");
     }
 
     // Hash the password

@@ -1,4 +1,5 @@
 import { IsEmail, IsString, MinLength, Matches, IsNotEmpty } from 'class-validator';
+import { Role } from '@prisma/client';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateUserDto {
@@ -29,7 +30,7 @@ export class CreateUserDto {
    */
   @ApiProperty({
     description: 'Roles assigned to the user',
-    example: ['user'], required: false, isArray: true, type: String
+    example: [Role.USER], required: false, isArray: true, type: String
   })
-  roles?: string[];
+  roles?: Role[];
 }
