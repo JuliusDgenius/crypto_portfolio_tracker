@@ -12,7 +12,7 @@
     "clean": "rimraf dist && rimraf libs/**/node_modules/.cache",
     "start": "nest start",
     "start:dev": "nest start api --watch",
-    "start:prod": "node dist/apps/api/main",
+    "start:prod": "node dist/apps/api/main.js",
     "format": "prettier --write \"apps/**/*.ts\" \"libs/**/*.ts\"",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",
     "test": "jest",
