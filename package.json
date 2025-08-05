@@ -13,7 +13,7 @@
     "clean": "rimraf dist && rimraf libs/**/node_modules/.cache",
     "start": "nest start",
     "start:dev": "nest start api --watch",
-    "start:prod": "nest start api --prod",
+    "start:prod": "node dist/apps/api/apps/api/src/main.js",
     "format": "prettier --write \"apps/**/*.ts\" \"libs/**/*.ts\"",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",
     "test": "jest",
@@ -99,7 +99,6 @@
     "@typescript-eslint/parser": "^6.0.0",
     "autoprefixer": "10.4.13",
     "babel-jest": "^29.7.0",
-    "copy-webpack-plugin": "^12.0.2",
     "cypress": "^13.13.0",
     "eslint": "^8.42.0",
     "eslint-config-prettier": "^9.0.0",
@@ -114,11 +113,12 @@
     "rimraf": "^6.0.1",
     "tailwindcss": "3.4.3",
     "ts-jest": "^29.1.0",
-    "ts-loader": "^9.5.1",
     "ts-node": "^10.9.1",
     "typescript": "~5.6.2",
+    "copy-webpack-plugin": "^12.0.2",
     "webpack": "^5.97.1",
     "webpack-cli": "^6.0.1",
-    "webpack-node-externals": "^3.0.0"
+    "webpack-node-externals": "^3.0.0",
+    "ts-loader": "^9.5.1"
   }
 }
