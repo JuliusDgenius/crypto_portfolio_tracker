@@ -9,6 +9,7 @@ export interface IUser {
   verified: boolean;
   twoFactorEnabled: boolean;
   twoFactorSecret?: string; // Encrypted TOTP secret for 2FA
+  profilePicture?: string;
   preferences: JsonPreferences;
   /**
    * RBAC roles assigned to the user

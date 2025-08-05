@@ -60,11 +60,11 @@ export class CsvController {
   @Get('export/portfolio/:portfolioId')
   async exportPortfolio(
     @Param('portfolioId') portfolioId: string,
+    @Res() res: Response,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('includeAssets') includeAssets?: string,
-    @Query('includeTransactions') includeTransactions?: string,
-    @Res() res: Response
+    @Query('includeTransactions') includeTransactions?: string
   ) {
     const options = {
       portfolioId,
@@ -90,9 +90,9 @@ export class CsvController {
   @Get('export/transactions/:portfolioId')
   async exportTransactions(
     @Param('portfolioId') portfolioId: string,
+    @Res() res: Response,
     @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
-    @Res() res: Response
+    @Query('endDate') endDate?: string
   ) {
     const csvBuffer = await this.csvService.exportTransactions(
       portfolioId,

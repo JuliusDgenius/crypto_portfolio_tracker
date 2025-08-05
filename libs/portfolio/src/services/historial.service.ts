@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../database/src';
 import { ConfigService } from '@nestjs/config';
-import { CreateHistoricalDataDto } from 'src/dto/create-historical-data.dto';
+import { CreateHistoricalDataDto } from '../dto/create-historical-data.dto';
 import { JsonObject } from '@prisma/client/runtime/library';
 
 @Injectable()

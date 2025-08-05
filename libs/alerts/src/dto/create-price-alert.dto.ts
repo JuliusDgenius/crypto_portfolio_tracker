@@ -66,7 +66,7 @@ export class CreatePriceAlertDto {
     return {
       type: AlertType.PRICE,
       cryptocurrency: this.cryptocurrency,
-      price: this.price,
+      targetPrice: this.price,
       comparison: this.comparison
     };
   }

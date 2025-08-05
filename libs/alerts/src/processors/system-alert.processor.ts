@@ -94,13 +94,12 @@ export class SystemAlertProcessor {
    */
   private async validateSystemComponent(componentId: string): Promise<boolean> {
     try {
-      // In a real implementation, this would check against your system's
-      // registered components, perhaps from a configuration service or database
-      const component = await this.prisma.systemComponent.findUnique({
-        where: { id: componentId }
-      });
-
-      return !!component;
+      // TODO: Implement when systemComponent model is added to Prisma schema
+      // const component = await this.prisma.systemComponent.findUnique({
+      //   where: { id: componentId }
+      // });
+      // return !!component;
+      return true; // Temporary fix until model is added
     } catch (error) {
       this.logger.error('Error validating system component', error.stack);
       return false;
@@ -112,12 +111,12 @@ export class SystemAlertProcessor {
    */
   private async validateErrorCode(errorCode: string): Promise<boolean> {
     try {
-      // This would check against your system's known error codes
-      const knownError = await this.prisma.systemErrorCode.findUnique({
-        where: { code: errorCode }
-      });
-
-      return !!knownError;
+      // TODO: Implement when systemErrorCode model is added to Prisma schema
+      // const knownError = await this.prisma.systemErrorCode.findUnique({
+      //   where: { code: errorCode }
+      // });
+      // return !!knownError;
+      return true; // Temporary fix until model is added
     } catch (error) {
       this.logger.error('Error validating error code', error.stack);
       return false;
@@ -133,24 +132,31 @@ export class SystemAlertProcessor {
     lastHealthCheck: Date;
   }> {
     try {
-      // This would integrate with your system's health monitoring service
-      const status = await this.prisma.systemComponent.findUnique({
-        where: { id: componentId },
-        select: {
-          status: true,
-          errorCode: true,
-          lastHealthCheck: true
-        }
-      });
-
-      if (!status) {
-        throw new Error(`Component not found: ${componentId}`);
-      }
-
+      // TODO: Implement when systemComponent model is added to Prisma schema
+      // const status = await this.prisma.systemComponent.findUnique({
+      //   where: { id: componentId },
+      //   select: {
+      //     status: true,
+      //     errorCode: true,
+      //     lastHealthCheck: true
+      //   }
+      // });
+      // 
+      // if (!status) {
+      //   throw new Error(`Component not found: ${componentId}`);
+      // }
+      // 
+      // return {
+      //   status: status.status as 'HEALTHY' | 'WARNING' | 'ERROR',
+      //   errorCode: status.errorCode,
+      //   lastHealthCheck: status.lastHealthCheck
+      // };
+      
+      // Temporary mock implementation
       return {
-        status: status.status as 'HEALTHY' | 'WARNING' | 'ERROR',
-        errorCode: status.errorCode,
-        lastHealthCheck: status.lastHealthCheck
+        status: 'HEALTHY' as const,
+        errorCode: undefined,
+        lastHealthCheck: new Date()
       };
     } catch (error) {
       this.logger.error('Error fetching component status', error.stack);

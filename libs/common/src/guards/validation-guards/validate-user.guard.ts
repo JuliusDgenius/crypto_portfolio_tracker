@@ -36,6 +36,7 @@ export function isValidJsonPreferences(
     }
   
     const user: IUser = {
+      roles: prismaUser.roles || [],
       id: prismaUser.id,
       email: prismaUser.email,
       password: prismaUser.password, // Handle securely

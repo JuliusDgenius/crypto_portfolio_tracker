@@ -1,8 +1,8 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../database/src';
 import { TransactionType } from '@prisma/client';
-import * as csv from 'csv-parser';
-import * as createCsvWriter from 'csv-writer';
+import csv from 'csv-parser';
+import { createObjectCsvWriter } from 'csv-writer';
 import { Readable } from 'stream';
 import { CreateTransactionDto } from '../dto';
 
@@ -286,7 +286,7 @@ export class CsvService {
               value: 0,
               profitLoss: 0,
               allocation: 0
-            }
+            } as any
           });
         }
 

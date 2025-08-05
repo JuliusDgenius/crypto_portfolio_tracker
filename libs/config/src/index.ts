@@ -1,4 +1,4 @@
-import exp from 'constants';
+import * as exp from 'constants';
 
 export * from './config.module';
 export * from './config.service';

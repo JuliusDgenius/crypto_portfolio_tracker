@@ -52,7 +52,7 @@ export class UserRepository {
           priceAlerts: false,
         },
       },
-      roles: dto.roles && dto.roles.length > 0 ? dto.roles : ["user"],
+      roles: dto.roles && dto.roles.length > 0 ? dto.roles as any : ["user"],
     };
 
     try {
@@ -112,7 +112,7 @@ export class UserRepository {
           where: {
             id
           },
-          data: dto
+          data: dto as any
         });
         return transformValidatePrismaUser(prismaUser);
     } catch (error) {
@@ -303,7 +303,7 @@ async storeTOTPSecret(userId: string, encryptedSecret: string): Promise<IUser | 
     try {
       const prismaUser = await this.prisma.user.update({
         where: { id: userId },
-        data: { roles },
+        data: { roles: roles as any },
       });
       return transformValidatePrismaUser(prismaUser);
     } catch (error) {
