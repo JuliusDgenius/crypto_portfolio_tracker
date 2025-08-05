@@ -18,7 +18,9 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
-    "test:e2e": "jest --config ./apps/api/test/jest-e2e.json"
+    "test:e2e": "jest --config ./apps/api/test/jest-e2e.json",
+    "prisma:dev:deploy": "npx prisma migrate deploy",
+    "postinstall": "npx prisma generate"
   },
   "dependencies": {
     "@nestjs-modules/mailer": "^2.0.2",
