@@ -7,8 +7,8 @@
     "libs/*"
   ],
   "scripts": {
-    "build": "nest build api",
-    "build:clean": "npm run clean && nest build api -b webpack",
+    "build": "npx nest build api",
+    "build:clean": "npx npm run clean && nest build api -b webpack",
     "clean": "rimraf dist && rimraf libs/**/node_modules/.cache",
     "start": "nest start",
     "start:dev": "nest start api --watch",
