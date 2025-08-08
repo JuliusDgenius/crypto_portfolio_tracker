@@ -37,7 +37,7 @@ import { EmailConfig } from '../interfaces';
             from: emailConfig.supportEmail, // Using supportEmail from interface
           },
           template: {
-            dir: join(__dirname, 'templates'),
+            dir: templatesDir,
             adapter: new HandlebarsAdapter(),
             options: {
               strict: true,

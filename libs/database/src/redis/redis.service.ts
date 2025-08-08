@@ -1,4 +1,4 @@
-import { Injectable, Inject, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Inject, OnModuleDestroy, Logger } from '@nestjs/common';
 import { REDIS_OPTIONS } from './redis.constants';
 import { RedisOptions } from './interfaces';
 import { Redis, ChainableCommander } from 'ioredis';
@@ -6,17 +6,24 @@ import { Redis, ChainableCommander } from 'ioredis';
 @Injectable()
 export class RedisService implements OnModuleDestroy {
   private readonly client: Redis;
+  private readonly logger = new Logger(RedisService.name);
 
   constructor(
     @Inject(REDIS_OPTIONS) private readonly options: RedisOptions
   ) {
     const optionsConfig: RedisOptions = {
-      host: '127.0.0.1',
-      port: 6379,
+      host: process.env.REDIS_HOST,
+      port: +(process.env.REDIS_PORT || 6379),
       db: 1
     };
 
+    try {
     this.client = new Redis(optionsConfig);
+    this.logger.log(`Redis instance ${this.client} initialized`);
+    } catch (error) {
+      this.logger.error('Failed to initialize redis', error);
+      throw error;
+    }
   }
 
   async get(key: string): Promise<string | null> {

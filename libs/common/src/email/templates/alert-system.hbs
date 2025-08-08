@@ -1,0 +1,31 @@
+{{!-- alert-system.hbs --}}
+{{#> layout}}
+    <h2>System Alert</h2>
+    <p>Hello {{username}},</p>
+    <p>We've detected an important system event that requires your attention:</p>
+    
+    <div class="alert-info">
+        <h3>System Event Details</h3>
+        <p><strong>Event Type:</strong> {{data.eventType}}</p>
+        <p><strong>Severity:</strong> <span class="severity-{{data.severity}}">{{data.severity}}</span></p>
+        <p><strong>Description:</strong> {{data.description}}</p>
+        <p><strong>Timestamp:</strong> {{formatDate triggeredAt}}</p>
+    </div>
+
+    {{#if data.recommendations}}
+    <div class="recommendations">
+        <h3>Recommendations</h3>
+        <ul>
+            {{#each data.recommendations}}
+                <li>{{this}}</li>
+            {{/each}}
+        </ul>
+    </div>
+    {{/if}}
+
+    <div style="text-align: center;">
+        <a href="{{baseUrl}}/dashboard" class="button">View Dashboard</a>
+    </div>
+
+    <p>If you have any questions about this system alert, please contact our support team.</p>
+{{/layout}}

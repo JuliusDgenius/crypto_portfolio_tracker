@@ -1,0 +1,25 @@
+{{!-- alert-portfolio.hbs --}}
+{{#> layout}}
+    <h2>Portfolio Alert Triggered</h2>
+    <p>Hello {{username}},</p>
+    <p>Your portfolio alert has been triggered with the following details:</p>
+    
+    <div class="alert-info">
+        <h3>Portfolio Details</h3>
+        <p><strong>Metric:</strong> {{data.metricType}}</p>
+        <p><strong>Current Value:</strong> ${{formatNumber data.currentValue}}</p>
+        <p><strong>Threshold:</strong> ${{formatNumber data.threshold}}</p>
+        <p><strong>Change:</strong> <span class="{{#if (gt data.percentageChange 0)}}positive{{else}}negative{{/if}}">{{formatPercentage data.percentageChange}}</span></p>
+    </div>
+
+    <div class="alert">
+        <p><strong>Alert Condition:</strong> {{data.metricType}} {{data.comparison}} ${{formatNumber data.threshold}}</p>
+        <p>Triggered at: {{formatDate triggeredAt}}</p>
+    </div>
+
+    <div style="text-align: center;">
+        <a href="{{baseUrl}}/portfolio/{{data.portfolioId}}" class="button">View Portfolio</a>
+    </div>
+
+    <p>You can manage your alerts in your account settings.</p>
+{{/layout}}

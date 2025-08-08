@@ -48,6 +48,9 @@ export class EmailService {
           ...context,
           baseUrl: this.emailConfig.baseUrl,
           supportEmail: this.emailConfig.supportEmail,
+          company_name: 'Crypto Portfolio Tracker',
+          current_year: new Date().getFullYear(),
+          recipient_email: to,
         },
       });
       this.logger.log(`Email sent successfully to ${to} using template ${template}`);

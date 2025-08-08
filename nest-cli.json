@@ -10,7 +10,7 @@
     "assets": [
       {
         "include": "libs/common/src/email/templates/**/*.hbs",
-        "outDir": "dist/apps/api/email/templates",
+        "outDir": "dist/apps/api/templates",
         "watchAssets": true
       }
     ],

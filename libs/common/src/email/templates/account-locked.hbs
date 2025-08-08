@@ -1,0 +1,33 @@
+{{!-- account-locked.hbs --}}
+{{#> layout}}
+    <h2>Account Security Alert</h2>
+    <p>Hello {{username}},</p>
+    <p>We've detected suspicious activity on your account and have temporarily locked it for your security.</p>
+    
+    <div class="alert">
+        <h3>Account Details</h3>
+        <p><strong>Locked At:</strong> {{formatDate lockedAt}}</p>
+        <p><strong>Reason:</strong> {{reason}}</p>
+        {{#if location}}
+            <p><strong>Location:</strong> {{location}}</p>
+        {{/if}}
+    </div>
+
+    <p>To unlock your account, please click the button below and follow the security verification process:</p>
+    
+    <div style="text-align: center;">
+        <a href="{{unlockLink}}" class="button">Unlock Account</a>
+    </div>
+
+    <p>If you believe this was done in error, please contact our support team immediately.</p>
+    
+    <div class="alert">
+        <p><strong>Security Tips:</strong></p>
+        <ul>
+            <li>Use a strong, unique password</li>
+            <li>Enable two-factor authentication</li>
+            <li>Never share your login credentials</li>
+            <li>Monitor your account activity regularly</li>
+        </ul>
+    </div>
+{{/layout}}
