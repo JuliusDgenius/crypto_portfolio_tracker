@@ -14,12 +14,15 @@ export class EmailService {
     private readonly mailerService: MailerService,
     private readonly configService: ConfigService,
   ) {
+    const templatesDir = process.env.NODE_ENV === 'production'
+          ? join(process.cwd(), 'dist/apps/api/templates')
+          : join(process.cwd(), 'libs/common/src/email/templates');
     this.emailConfig = this.configService.get<EmailConfig>('email');
     this.logger.log('Email Service initialized with config:', {
       host: this.emailConfig?.host,
       port: this.emailConfig?.port,
       enabled: this.emailConfig?.emailEnabled,
-      templatesDir: join(__dirname, 'templates')
+      templatesDir: templatesDir
     });
   }
 
