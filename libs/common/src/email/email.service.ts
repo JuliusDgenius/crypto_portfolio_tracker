@@ -74,7 +74,7 @@ export class EmailService {
     verificationToken: string,
     username: string,
   ): Promise<void> {
-    const verificationLink = `${this.emailConfig.baseUrl}/api/verify-email?token=${verificationToken}`;
+    const verificationLink = `${this.emailConfig.baseUrl}/verify-email?token=${verificationToken}`;
     
     await this.sendEmail(
       to,
