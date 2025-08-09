@@ -7,7 +7,7 @@
     "libs/*"
   ],
   "scripts": {
-    "build": "cross-env NODE_ENV=production npm --workspace=api run build",
+    "build": "cross-env NODE_ENV=production npm --workspace=api run build && cp -r libs/common/src/email/templates dist/apps/api/",
     "build:render": "npm --workspace=api run build && ls -la dist/apps/api/",
     "build:clean": "npx npm run clean && nest build api -b webpack",
     "clean": "rimraf dist && rimraf libs/**/node_modules/.cache",
