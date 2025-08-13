@@ -5,7 +5,7 @@ import { AuthService } from '../services/auth.service';
 import { JwtRefreshGuard  } from '../guards';
 import { RegisterDto, LoginDto, ResetPasswordDto,
   RequestPasswordResetDto, DeleteAccountDto,
-  Setup2FADto, Verify2FADto
+  Setup2FADto, Verify2FADto, VerifyEmailDto
 } from '../dto';
 import { JwtAuthGuard } from '../guards';
 import { TempToken, Tokens } from '../';
@@ -127,33 +127,13 @@ export class AuthController {
         description: 'Invalid or expired verification token'
     })
     @HttpCode(HttpStatus.OK)
-    async verifyEmail(@Query('token') token: string) {
-        await this.authService.verifyEmail({ token });
+    @ApiBody({
+      type: VerifyEmailDto,
+      description: 'Verification token payload'
+    })
+    async verifyEmail(@Body() dto: VerifyEmailDto) {
+        await this.authService.verifyEmail(dto);
         return { message: 'Email verified successfully' };
-    }
-
-    @Get('verify-email')
-    @ApiOperation({
-      summary: 'Verify user email (GET)',
-      description: 'Verifies a user\'s email address using the verification token from the query string.'
-    })
-    @ApiResponse({
-      status: 200,
-      description: 'Email verified successfully',
-      schema: {
-        properties: {
-          message: { type: 'string', example: 'Email verified successfully' }
-        }
-      }
-    })
-    @ApiResponse({
-      status: 401,
-      description: 'Invalid or expired verification token'
-    })
-    @HttpCode(HttpStatus.OK)
-    async verifyEmailGet(@Query('token') token: string) {
-      await this.authService.verifyEmail({ token });
-      return { message: 'Email verified successfully' };
     }
 
     @UseGuards(JwtRefreshGuard)
