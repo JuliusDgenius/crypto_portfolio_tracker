@@ -26,6 +26,7 @@ import { CoreModule } from '../../../libs/core/src/core.module';
         MAIL_LOGGER: Joi.boolean().default(true),
         MAIL_MOCK: Joi.boolean().default(false),
         MAIL_BASE_URL: Joi.string().required(),
+        MAIL_API_BASE_URL: Joi.string().optional(),
         MAIL_SUPPORT_EMAIL: Joi.string().email().required(),
         EMAIL_ENABLED: Joi.boolean().default(true),
       }),

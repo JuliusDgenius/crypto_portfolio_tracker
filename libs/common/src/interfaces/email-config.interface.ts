@@ -10,6 +10,7 @@ export interface EmailConfig {
     logger?: boolean;
     mock?: boolean;
     baseUrl: string;
+    apiBaseUrl?: string;
     supportEmail: string;
     emailEnabled?: boolean
   }

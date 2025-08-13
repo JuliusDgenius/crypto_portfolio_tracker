@@ -132,6 +132,30 @@ export class AuthController {
         return { message: 'Email verified successfully' };
     }
 
+    @Get('verify-email')
+    @ApiOperation({
+      summary: 'Verify user email (GET)',
+      description: 'Verifies a user\'s email address using the verification token from the query string.'
+    })
+    @ApiResponse({
+      status: 200,
+      description: 'Email verified successfully',
+      schema: {
+        properties: {
+          message: { type: 'string', example: 'Email verified successfully' }
+        }
+      }
+    })
+    @ApiResponse({
+      status: 401,
+      description: 'Invalid or expired verification token'
+    })
+    @HttpCode(HttpStatus.OK)
+    async verifyEmailGet(@Query('token') token: string) {
+      await this.authService.verifyEmail({ token });
+      return { message: 'Email verified successfully' };
+    }
+
     @UseGuards(JwtRefreshGuard)
     @Post('refresh')
     @ApiOperation({ 

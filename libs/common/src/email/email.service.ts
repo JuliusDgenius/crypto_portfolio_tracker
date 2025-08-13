@@ -74,7 +74,14 @@ export class EmailService {
     verificationToken: string,
     username: string,
   ): Promise<void> {
-    const verificationLink = `${this.emailConfig.baseUrl}/verify-email?token=${verificationToken}`;
+    const apiBase = this.emailConfig.apiBaseUrl || this.emailConfig.baseUrl;
+    if (!this.emailConfig.apiBaseUrl) {
+      this.logger.warn('MAIL_API_BASE_URL not set; falling back to MAIL_BASE_URL for verification links');
+    }
+    const apiPrefix = this.configService.get<string>('API_PREFIX') || 'api';
+    const normalizedBase = (apiBase || '').replace(/\/$/, '');
+    const needsPrefix = !normalizedBase.endsWith(`/${apiPrefix}`);
+    const verificationLink = `${normalizedBase}${needsPrefix ? `/${apiPrefix}` : ''}/auth/verify-email?token=${verificationToken}`;
     
     await this.sendEmail(
       to,
