@@ -13,7 +13,7 @@ async function bootstrap() {
 
    // Enable cors
    app.enableCors({
-     origin: ['https://cryptocurrency-tracker-frontend.vercel.app/', 'http://localhost:5173'],
+     origin: ['https://cryptocurrency-tracker-frontend.vercel.app', 'http://localhost:5173'],
      credentials: true,
      allowedHeaders: ['Content-Type', 'Authorization'],
    });
@@ -39,7 +39,7 @@ async function bootstrap() {
   const reflector = app.get(Reflector);
   app.useGlobalGuards(new RolesGuard(reflector));
   // set global prefix from environment variable
-  app.setGlobalPrefix(process.env.API_PREFIX);
+  app.setGlobalPrefix(process.env.API_PREFIX || 'api');
   
   
   await app.listen(process.env.PORT ?? 3000);
