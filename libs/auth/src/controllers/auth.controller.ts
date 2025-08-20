@@ -5,7 +5,8 @@ import { AuthService } from '../services/auth.service';
 import { JwtRefreshGuard  } from '../guards';
 import { RegisterDto, LoginDto, ResetPasswordDto,
   RequestPasswordResetDto, DeleteAccountDto,
-  Setup2FADto, Verify2FADto
+  Setup2FADto, Verify2FADto,
+  ResendVerificationEmailDto
 } from '../dto';
 import { JwtAuthGuard } from '../guards';
 import { TempToken, Tokens } from '../';
@@ -424,7 +425,7 @@ export class AuthController {
         description: 'Resends the verification email to an unverified user'
     })
     @ApiBody({
-        type: RequestPasswordResetDto,
+        type: ResendVerificationEmailDto,
         description: 'Email address for verification'
     })
     @ApiResponse({
@@ -442,7 +443,7 @@ export class AuthController {
     })
     @HttpCode(HttpStatus.OK)
     async resendVerificationEmail(
-        @Body() dto: RequestPasswordResetDto
+        @Body() dto: ResendVerificationEmailDto
     ): Promise<{ message: string }> {
         await this.authService.resendVerificationEmail(dto.email);
         return { 

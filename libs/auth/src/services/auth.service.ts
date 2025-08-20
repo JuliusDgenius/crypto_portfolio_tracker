@@ -579,23 +579,17 @@ export class AuthService {
   async resendVerificationEmail(email: string): Promise<void> {
     const user = await this.userRepository.findByEmail(email);
     
-    if (!user) {
-      throw new BadRequestException('No account found with this email');
+    if (user && !user.verified) {
+      const verificationToken = this.generateVerificationToken(user.id);
+      this.logger.log(`Resending verification email to ${user.email}`);
+      
+      await this.emailService.sendVerificationEmail(
+        user.email,
+        verificationToken,
+        user?.name ?? 'User'
+      );
+      
+      this.logger.log('Verification email resent successfully');
     }
-
-    if (user.verified) {
-      throw new BadRequestException('Email is already verified');
-    }
-
-    const verificationToken = this.generateVerificationToken(user.id);
-    this.logger.log(`Resending verification email to ${user.email}`);
-    
-    await this.emailService.sendVerificationEmail(
-      user.email,
-      verificationToken,
-      user?.name ?? 'User'
-    );
-    
-    this.logger.log('Verification email resent successfully');
   }
 }
