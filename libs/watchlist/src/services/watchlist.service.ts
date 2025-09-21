@@ -3,7 +3,9 @@ import {
     NotFoundException,
     ForbiddenException,
     Logger,
-    ConflictException } from '@nestjs/common';
+    ConflictException,
+    InternalServerErrorException
+   } from '@nestjs/common';
 import {
     CreateWatchlistDto,
     UpdateWatchlistDto,
@@ -37,14 +39,34 @@ export class WatchlistService {
       throw new ConflictException('Watchlist with this name already exists');
     }
 
-    return this.prisma.watchlist.create({
-      data: {
-        userId,
-        name: dto.name,
-        description: dto.description,
-        alertIds: [],
-      },
-    });
+    try {
+      return this.prisma.watchlist.create({
+        data: {
+          userId,
+          name: dto.name.toLocaleUpperCase(),
+          description: dto.description,
+          alertIds: [],
+        },
+      }); 
+    } catch (error) {
+      // Check if the error is a known Prisma error
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        // Log the specific Prisma error code and the context of the request
+        this.logger.error(
+          `Prisma Error [${error.code}]: Failed to create watchlist for user ${userId}.`,
+          { dto, meta: error.meta }
+        );
+      } else {
+        // Log any other unexpected errors
+        this.logger.error(
+          `Unexpected Error: Failed to create watchlist for user ${userId}.`,
+          { dto, error }
+        );
+      }
+
+      // Re-throw a standard exception for NestJS to handle
+      throw new InternalServerErrorException('Could not create the watchlist.');
+    }
   }
 
   async updateWatchlist(
@@ -216,18 +238,30 @@ export class WatchlistService {
       })
     );
 
+    const pricePromises = assetsInWatchlist.map(asset => this.priceService.getAssetInfo(asset.symbol));
+
+    const priceResults = await Promise.allSettled(pricePromises);
+
     // Update current prices for metrics
-    const updatedAssets = await Promise.all(
-      assetsInWatchlist.map(async (assetDetail) => {
-        const priceInfo = await this.priceService.getAssetInfo(
-          assetDetail.symbol,
+    const updatedAssets = [];
+    priceResults.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        updatedAssets.push({
+          ...assetsInWatchlist[index],
+          currentPrice: result.value.price,
+        });
+      } else {
+        // Log the error for the specific asset that failed
+        this.logger.warn(
+          `Could not fetch price for ${assetsInWatchlist[index].symbol}: ${result.reason.message}`
         );
-        return {
-          ...assetDetail,
-          currentPrice: priceInfo.price,
-        };
-      }),
-    );
+        // includes the asset with its last known price
+        updatedAssets.push({
+            ...assetsInWatchlist[index], 
+            // currentPrice is already the old price from the DB
+        });
+      }
+    });
 
     // Sort by price performance
     const sortedByPerformance = [...updatedAssets].sort(
