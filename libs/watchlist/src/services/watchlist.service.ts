@@ -102,8 +102,8 @@ export class WatchlistService {
     const trimmedSymbol = dto.symbol.trim();
     
     // Check if asset already exists in watchlist
-    const asset = await this.prisma.asset.findUnique({
-      where: { id: trimmedSymbol },
+    const asset = await this.prisma.asset.findFirst({
+      where: { symbol: trimmedSymbol },
     });
     if (!asset) {
       // TODO: If asset not found, perhaps trigger a fetch from an external API and store it

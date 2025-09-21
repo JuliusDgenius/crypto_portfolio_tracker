@@ -444,7 +444,7 @@ async getAvailableCryptos(): Promise<Array<{ symbol: string; name: string; curre
           },
           timeout,
           maxRedirects: 5,
-          validateStatus: (status) => status < 500 // Accept any status less than 500
+          validateStatus: (status) => status >= 200 && status < 300 // Accept any status less than 500
         }).pipe(
           catchError(error => {
             // Log detailed error information
@@ -486,6 +486,7 @@ async getAvailableCryptos(): Promise<Array<{ symbol: string; name: string; curre
       );
 
       if (!data || !Array.isArray(data)) {
+        this.logger.warn('Received invalid data format from CoinGecko:', JSON.stringify(data));
         throw new InternalServerErrorException('Invalid response from CoinGecko API');
       }
 
