@@ -13,7 +13,7 @@ async function bootstrap() {
 
    // Enable cors
    app.enableCors({
-     origin: ['https://cryptocurrency-tracker-frontend.vercel.app', 'http://localhost:5173'],
+     origin: ['https://cryptocurrency-tracker-frontend.vercel.app', 'https://crypto-portfolio-backend-zq68.onrender.com', 'http://localhost:5173'],
      credentials: true,
      allowedHeaders: ['Content-Type', 'Authorization'],
    });
