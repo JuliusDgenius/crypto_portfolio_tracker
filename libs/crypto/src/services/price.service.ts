@@ -21,17 +21,22 @@ export class PriceService {
   private readonly logger = new Logger(PriceService.name);
   private readonly baseUrl: string;
   private readonly apiKey: string;
-  private readonly cachePrefix = 'crypto:price:';
-  private readonly cacheDuration = 300; // 5 minutes
+  private readonly cacheDuration: number; // 5 minutes
+  private readonly perPage = this.configService.get<number>('PER_PAGE');
+  private readonly maxRetries = this.configService.get<number>('MAX_RETRIES');
+  private readonly retryDelay = this.configService.get<number>('RETRY_DELAY');
+  private readonly timeout = this.configService.get<number>('TIMEOUT');
+  private readonly cachePrefix = this.configService.get<string>('CACHE_PREFIX');
+
 
   // Cache configuration for different data types
   private readonly cacheConfig = {
     currentPrice: {
-      prefix: 'crypto:price:current:',
+      prefix: this.cachePrefix,
       duration: 300 // 5 minutes
     },
     historicalPrice: {
-      prefix: 'crypto:price:history:',
+      prefix: this.cachePrefix + ':history:',
       duration: 3600 // 1 hour
     },
     marketStats: {
@@ -408,132 +413,66 @@ async getAssetInfo(symbol: string): Promise<IAssetInfo> {
  * @returns Promise containing array of cryptocurrency information
  * @throws Error if the cryptocurrency list cannot be retrieved
  */
-async getAvailableCryptos(): Promise<Array<{ symbol: string; name: string; currentPrice: number }>> {
-  this.logger.debug('Getting available cryptocurrencies');
+async getAvailableCryptos(): Promise<Array<{ 
+  symbol: string; 
+  name: string; 
+  currentPrice: number 
+}>> {
   const cacheKey = `${this.cacheConfig.currentPrice.prefix}available_cryptos`;
-  
-  // Check cache first
-  const cachedCryptos = await this.redisService.get(cacheKey);
-  if (cachedCryptos) {
-    this.logger.debug('Retrieved cached available cryptocurrencies');
-    return JSON.parse(cachedCryptos);
-  }
+  const cached = await this.redisService.get(cacheKey);
+  if (cached) return JSON.parse(cached);
 
-  this.logger.debug('Cache miss for available cryptocurrencies, fetching from API');
-
-  const maxRetries = 3;
-  const retryDelay = 2000;
-  const timeout = 15000; // Increased timeout to 15 seconds
-
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      // Get top cryptocurrencies by market cap
-      const { data } = await firstValueFrom(
-        this.httpService.get(`${this.baseUrl}/coins/markets`, {
-          params: {
-            vs_currency: 'usd',
-            order: 'market_cap_desc',
-            per_page: 100,
-            page: 1,
-            sparkline: false,
-            price_change_percentage: '24h'
-          },
-          headers: {
-            'x-cg-api-key': this.apiKey,
-            'Accept-Encoding': 'gzip' // Simplified encoding
-          },
-          timeout,
-          maxRedirects: 5,
-          validateStatus: (status) => status >= 200 && status < 300 // Accept any status less than 500
-        }).pipe(
-          catchError(error => {
-            // Log detailed error information
-            this.logger.error('Detailed error information:', {
-              message: error.message,
-              code: error.code,
-              status: error.response?.status,
-              statusText: error.response?.statusText,
-              data: error.response?.data,
-              config: {
-                url: error.config?.url,
-                method: error.config?.method,
-                headers: error.config?.headers,
-                params: error.config?.params
-              }
-            });
-
-            if (error.response?.status === 429) {
-              this.logger.warn(`Rate limit exceeded. Attempt ${attempt}/${maxRetries}`);
-              throw new Error('RATE_LIMIT_EXCEEDED');
-            }
-            if (error.code === 'ETIMEDOUT' || error.code === 'ECONNABORTED') {
-              this.logger.warn(`Request timeout. Attempt ${attempt}/${maxRetries}`);
-              throw new Error('REQUEST_TIMEOUT');
-            }
-            if (error.code === 'ECONNREFUSED') {
-              this.logger.warn(`Connection refused. Attempt ${attempt}/${maxRetries}`);
-              throw new Error('CONNECTION_REFUSED');
-            }
-            if (error.code === 'ENOTFOUND') {
-              this.logger.warn(`DNS lookup failed. Attempt ${attempt}/${maxRetries}`);
-              throw new Error('DNS_LOOKUP_FAILED');
-            }
-            
-            this.logger.error(`Failed to fetch available cryptocurrencies: ${error.message}`);
-            throw error;
-          })
-        )
-      );
-
-      if (!data || !Array.isArray(data)) {
-        this.logger.warn('Received invalid data format from CoinGecko:', JSON.stringify(data));
-        throw new InternalServerErrorException('Invalid response from CoinGecko API');
-      }
-
-      const cryptos = data.map(coin => ({
-        symbol: coin.symbol.toUpperCase(),
-        name: coin.name,
-        currentPrice: coin.current_price
-      }));
-
-      // Cache the result
-      await this.redisService.set(
-        cacheKey,
-        JSON.stringify(cryptos),
-        'EX',
-        this.cacheConfig.currentPrice.duration
-      );
-
-      return cryptos;
-    } catch (error) {
-      if (attempt === maxRetries) {
-        this.logger.error(
-          `Error fetching available cryptocurrencies after ${maxRetries} attempts: ${error.message}. ${error.stack}`);
-        throw error;
-      }
-
-      // Different retry delays based on error type
-      let delay = retryDelay;
-      switch (error.message) {
-        case 'RATE_LIMIT_EXCEEDED':
-          delay = retryDelay * 2;
-          break;
-        case 'REQUEST_TIMEOUT':
-        case 'CONNECTION_REFUSED':
-        case 'DNS_LOOKUP_FAILED':
-          delay = retryDelay * 3;
-          break;
-      }
-      
-      this.logger.warn(`Retrying fetch attempt ${attempt + 1}/${maxRetries} due to: ${error.message}`);
-      await new Promise(resolve => setTimeout(resolve, delay));
+  try {
+    const cryptos = await this.withRetry(
+      () => this.fetchAvailableCryptosFromAPI(), this.maxRetries, this.retryDelay
+    );
+    await this.redisService.set(cacheKey, JSON.stringify(cryptos), 'EX', this.cacheConfig.currentPrice.duration);
+    return cryptos;
+  } catch (error) {
+    this.logger.error(`getAvailableCryptos failed: ${error.message}`);
+    const stale = await this.redisService.get(cacheKey); 
+    if (stale) {
+      this.logger.warn('Returning stale cached data due to API failure');
+      return JSON.parse(stale);
     }
+    throw new InternalServerErrorException('Unable to fetch available cryptocurrencies at this time.');
   }
-
-  throw new Error('Failed to fetch available cryptocurrencies after all retry attempts');
 }
 
-  // Private helper methods
+// Private helper methods
+private async fetchAvailableCryptosFromAPI() {
+  const { data } = await firstValueFrom(
+    this.httpService.get(`${this.baseUrl}/coins/markets`, {
+      params: { vs_currency: 'usd', order: 'market_cap_desc', per_page: this.perPage, page: 1 },
+      headers: { 'x-cg-api-key': this.apiKey },
+      timeout: this.timeout,
+    }),
+  );
+
+  if (!Array.isArray(data)) throw new Error('Invalid response format');
+
+  return data
+    .map(coin => {
+      if (!coin?.symbol || !coin?.name || typeof coin.current_price !== 'number') return null;
+      return { symbol: coin.symbol.toUpperCase(), name: coin.name, currentPrice: coin.current_price };
+    })
+    .filter(Boolean);
+}
+
+private async withRetry<T>(
+  fn: () => Promise<T>, 
+  retries: number, 
+  delay: number): Promise<T> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (i === retries - 1) throw err;
+      this.logger.warn(`Retrying after error: ${err.message}`);
+      await new Promise(r => setTimeout(r, delay * (i + 1))); // exponential-ish backoff
+    }
+  }
+}
 
   private getNumberOfDays(range: string): number {
     const rangeMappings = {

@@ -3,7 +3,6 @@ import {
   Catch,
   ArgumentsHost,
   HttpException,
-  HttpStatus,
 } from '@nestjs/common';
 import { Response } from 'express';
 
@@ -19,10 +18,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
       statusCode: status,
       timestamp: new Date().toISOString(),
       path: ctx.getRequest().url,
+      method: ctx.getRequest().method,
       message: 
         typeof exceptionResponse === 'string'
           ? exceptionResponse
           : (exceptionResponse as any).message || 'Internal server error',
+          ...(process.env.NODE_ENV !== 'production') && { stack: exception.stack }
     };
 
     response.status(status).json(errorResponse);

@@ -1,5 +1,5 @@
-import { ConflictException, Injectable, Logger, 
-  UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { BaseException, UserNotFoundException, InvalidTokenException } from '../../../common/src/exceptions';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UserRepository, PasswordService } from '../../../core/src';
@@ -9,7 +9,7 @@ import { ResetPasswordDto } from '../dto';
 import { VerifyEmailDto } from '../dto';
 import { Setup2FADto, Verify2FADto } from '../dto';
 import { Tokens, JwtPayload, TempToken } from '../interfaces';
-import { InvalidTokenException, IUser, UserNotFoundException } from '../../../common/src';
+import {  IUser } from '../../../common/src';
 import { JwtSecretType } from '../strategies';
 import { EmailService } from '../../../common/src/email/email.service';
 import { TotpService } from './totp.service';
@@ -38,16 +38,37 @@ export class AuthService {
    * @returns A promise that resolves when the registration is complete.
    */
   async register(dto: RegisterDto): Promise<{user: Partial<IUser>}> {
-    try {
-      const userRoles = dto.roles && dto.roles.length > 0
-      ? dto.roles.map(role => role.toUpperCase() as Role)
-      : [Role.USER];
-    
-    const user = await this.userRepository.create({ ...dto, roles: userRoles });
-    const verificationToken = this.generateVerificationToken(user.id!);
-    const tokens = await this.generateTokens(user);
+     // Normalize user roles
+    const userRoles = dto.roles && dto.roles.length > 0
+    ? dto.roles.map(role => role.toUpperCase() as Role)
+    : [Role.USER];
 
-    // send verifiction email
+  // Check for duplicate user before creation
+  const existingUser = await this.userRepository.findByEmail(dto.email);
+  if (existingUser) {
+    throw new BaseException(
+      'A user with this email already exists',
+      'USER_ALREADY_EXISTS',
+      409
+    );
+  }
+
+  // Create new user
+  const user = await this.userRepository.create({ ...dto, roles: userRoles });
+  if (!user) {
+    throw new BaseException(
+      'Failed to create user',
+      'USER_CREATION_FAILED',
+      500
+    );
+  }
+
+  // Generate verification token
+  const verificationToken = this.generateVerificationToken(user.id!);
+  const tokens = await this.generateTokens(user);
+
+  // Send verification email
+  try {
     this.logger.log(`Sending verification email to ${user.email}`);
     await this.emailService.sendVerificationEmail(
       user.email,
@@ -55,14 +76,19 @@ export class AuthService {
       user?.name ?? 'User'
     );
     this.logger.log('Verification email sent');
-
-    delete user.password;
-    return {  user, ...tokens } 
-    } catch (error) {
-      this.logger.error(`Registration error: ${error?.message}`);
-      throw new BadRequestException('Failed to register user');
-    }
+  } catch (error) {
+    this.logger.error(`Email sending failed: ${error.message}`);
+    throw new BaseException(
+      'Registration succeeded but email could not be sent',
+      'EMAIL_SEND_FAILED',
+      500
+    );
   }
+
+  delete user.password;
+  return { user, ...tokens };
+  }
+
 
   /**
    * Logs in a user and returns access and refresh tokens.
@@ -71,53 +97,31 @@ export class AuthService {
    * @throws UnauthorizedException if the credentials are invalid or email is not verified.
    */
   async login(dto: LoginDto): Promise<{ user: Partial<IUser> } | Tokens | TempToken> {
-    try {
-      // check if user exists
-      const user = await this.userRepository.findByEmail(dto.email);
-      if (!user) {
-        throw new BadRequestException('Invalid email or password');
-      }
-
-      if (!user.verified) {
-        throw new UnauthorizedException('Please verify your email first');
-      }
-
-      const isPasswordValid = await this.passwordService.compare(
-        dto.password,
-        user.password,
-      );
-      if (!isPasswordValid) {
-        this.logger.debug(`Password not match`);
-        throw new UnauthorizedException('Invalid credentials');
-      }
-
-      // Check if 2FA is enabled
-      if (user.twoFactorEnabled) {
-        // Generate a temporary token for 2FA verification
-        const tempToken = this.generateTempToken(user.id);
-        this.logger.log(`2FA required for user ${user.id}, generated temp token`);
-        return {
-          require2FA: true,
-          tempToken,
-        };
-      }
-	
-      this.logger.log(`User ${user.id} id logged in.`);
-      const tokens = await this.generateTokens(user);
-      const { password, ...retUser } = user 
-      return {
-        ...tokens,
-        user: retUser
-      };
-    } catch (error) {
-      if (error instanceof UnauthorizedException) {
-        this.logger.debug('Unauthorized error occurred.');
-        throw error;
-      }
-      this.logger.error(`Login error: ${error?.message}`);
-      throw new UnauthorizedException('Invalid credentials');
+    const user = await this.userRepository.findByEmail(dto.email);
+    if (!user) {
+      throw new BaseException('Invalid email or password', 'AUTH_INVALID', 400);
     }
-  }
+  
+    if (!user.verified) {
+      throw new BaseException('Email not verified', 'EMAIL_NOT_VERIFIED', 403);
+    }
+  
+    const isPasswordValid = await this.passwordService.compare(dto.password, user.password);
+    if (!isPasswordValid) {
+      throw new BaseException('Invalid credentials', 'AUTH_INVALID', 401);
+    }
+  
+    if (user.twoFactorEnabled) {
+      const tempToken = this.generateTempToken(user.id);
+      this.logger.log(`2FA required for user ${user.id}, generated temp token`);
+      return { require2FA: true, tempToken };
+    }
+  
+    this.logger.log(`User ${user.id} logged in.`);
+    const tokens = await this.generateTokens(user);
+    const { password, ...retUser } = user;
+    return { ...tokens, user: retUser };
+  }  
 
   /**
    * Verifies 2FA code and completes login
@@ -269,7 +273,7 @@ export class AuthService {
     const user = await this.userRepository.findById(userId);
     
     if (!user) {
-      throw new BadRequestException('No user found for ID:', userId);
+      throw new UserNotFoundException();
     }
 
     const {password, ...sanitizedUser} = user;
@@ -283,12 +287,43 @@ export class AuthService {
    * @throws UnauthorizedException if the token is invalid.
    */
   async verifyEmail(dto: VerifyEmailDto): Promise<void> {
-    const payload = this.jwtService.verify(dto.token, {
-      secret: this.configService.get('JWT_VERIFICATION_SECRET'),
-    });
-
-    await this.userRepository.verifyEmail(payload.sub);
-  }
+    try {
+      const payload = this.jwtService.verify(dto.token, {
+        secret: this.configService.get<string>('JWT_VERIFICATION_SECRET'),
+      });
+  
+      // Fetch user by ID from payload
+      const user = await this.userRepository.findById(payload.sub);
+      if (!user) {
+        throw new UserNotFoundException();
+      }
+  
+      if (user.verified) {
+        throw new BaseException(
+          'Email already verified',
+          'EMAIL_ALREADY_VERIFIED',
+          400
+        );
+      }
+  
+      // Update verification status
+      await this.userRepository.verifyEmail(user.id);
+  
+      // Optional: log success
+      this.logger.log(`Email verified successfully for user: ${user.email}`);
+    } catch (error) {
+      if (error.name === 'TokenExpiredError' || error.name === 'JsonWebTokenError') {
+        throw new InvalidTokenException();
+      }
+  
+      if (error instanceof UserNotFoundException || error instanceof BaseException) {
+        throw error; // rethrow known exceptions
+      }
+  
+      this.logger.error(`Email verification failed: ${error.message}`);
+      throw new BaseException('Email verification failed', 'EMAIL_VERIFY_ERROR', 500);
+    }
+  }  
 
   /**
    * Refreshes access and refresh tokens for a user.
@@ -309,7 +344,7 @@ export class AuthService {
       const isValidToken = await this.userRepository.verifyRefreshToken(userId, refreshToken);
       if (!isValidToken) {
         this.logger.debug(`Refresh token invalid ${refreshToken}`);
-        // If token is invalid, we should invalidate all refresh tokens for this user
+        // If token is invalid, invalidate all refresh tokens for this user
         // This prevents attacks using stolen refresh tokens
         await this.userRepository.invalidateRefreshToken(userId);
         throw new InvalidTokenException();
@@ -319,7 +354,6 @@ export class AuthService {
       // This closes the security window
       await this.userRepository.invalidateRefreshToken(userId);
   
-      // Only after invalidating the old token do we generate new ones
       const tokens = await this.generateTokens(user);
       
       // Store the new refresh token
@@ -332,7 +366,16 @@ export class AuthService {
         error.stack
       );
 
-      if (error instanceof UnauthorizedException) {
+      // Handle JWT-specific issues if repository uses JWT under the hood
+      if (error.name === 'TokenExpiredError' || error.name === 'JsonWebTokenError') {
+        await this.userRepository.invalidateRefreshToken(userId).catch(err =>
+          this.logger.error('Failed to invalidate tokens after JWT error:', err)
+        );
+        throw new InvalidTokenException();
+      }
+
+
+      if (error instanceof BaseException) {
         throw error;
       }
       // If anything goes wrong during the refresh process,
@@ -373,32 +416,46 @@ export class AuthService {
    * @throws UnauthorizedException if the token is invalid.
    */
   async resetPassword(dto: ResetPasswordDto): Promise<void> {
+    let payload: any;
     try {
-      const payload = this.jwtService.verify(dto.token, {
+      payload = this.jwtService.verify(dto.token, {
         secret: this.configService.get('JWT_RESET_SECRET'),
         maxAge: '1h',
       });
+    } catch (error) {
+      this.logger.warn(`Invalid or expired reset token: ${error.message}`);
+      throw new InvalidTokenException();
+    }
 
       const user = await this.userRepository.findById(payload.sub);
       if (!user) {
-        throw new UnauthorizedException('Invalid reset token');
+        throw new UserNotFoundException();
       }
 
       const hashedPassword = await this.passwordService.hash(dto.newPassword);
-      await this.userRepository.updatePassword(user.id, hashedPassword);
-      this.logger.debug(`Password updated successfully ${hashedPassword}`);
-      
-      // Send confirmation email
-      await this.emailService.sendPasswordChangeNotification(
-        user.email,
-        user.name
-      );
+      const updated = await this.userRepository.updatePassword(user.id, hashedPassword);
+      if (!updated) {
+        throw new BaseException('Failed to update password', 'PASSWORD_UPDATE_FAILED', 500);
+      }
 
-      this.logger.log(`Password successfully reset for user: ${user.id}`);
-    } catch (error) {
-      this.logger.error(`Password reset failed: ${error.message}`);
-      throw new UnauthorizedException('Invalid or expired reset token');
-    }
+      this.logger.debug(`Password reset successfully ${hashedPassword}`);
+      
+      try {
+        // Send confirmation email
+        await this.emailService.sendPasswordChangeNotification(
+          user.email,
+          user.name
+        );
+
+      this.logger.log(`Password successfully reset for user: ${user.id}`); 
+      } catch (error) {
+        this.logger.error(`Failed to send password change email: ${error.message}`);
+        throw new BaseException(
+          'Password updated, but notification email could not be sent',
+          'EMAIL_SEND_FAILED',
+          500 
+        );
+      }
   }
 
   /**

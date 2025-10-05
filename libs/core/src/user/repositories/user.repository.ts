@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, BadRequestException, HttpException, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../../database/src';
 import { IUser, JsonPreferences, transformValidatePreferences } from '../../../../common/src';
 import { CreateUserDto } from '../dto/create-user.dto';
@@ -23,108 +23,119 @@ export class UserRepository {
     }
 
     try {
-     // Check if user exists already
-      const existingUser = await this.prisma.user.findUnique({
-      where: {
+           // Hash the password
+      const hashedPassword = await this.passwordService.hash(dto.password);
+
+      // Create user data object
+      const createData: Prisma.UserCreateInput = {
         email: dto.email,
-      },
-    });
-
-    if (existingUser) {
-        throw new ConflictException("Email already exist");
-      } 
-    } catch (error) {
-      this.logger.error("Error checking if user exists:", error);
-      throw new Error("Failed to check if user exists");
-    }
-
-    // Hash the password
-    const hashedPassword = await this.passwordService.hash(dto.password);
-
-    // Create our data object with the correct shape
-    const createData: Prisma.UserCreateInput = {
-      email: dto.email,
-      name: dto.name || null,
-      verified: false,
-      twoFactorEnabled: false,
-      password: hashedPassword,
-      preferences: {
-        currency: 'USD',
-        theme: 'light',
-        notifications: {
-          email: true,
-          push: false,
-          priceAlerts: false,
+        name: dto.name || null,
+        verified: false,
+        twoFactorEnabled: false,
+        password: hashedPassword,
+        preferences: {
+          currency: 'USD',
+          theme: 'light',
+          notifications: {
+            email: true,
+            push: false,
+            priceAlerts: false,
+          },
         },
-      },
-      roles: dto.roles && dto.roles.length > 0 ? dto.roles as any : ["user"],
-    };
-
-    try {
+        roles: dto.roles && dto.roles.length > 0 ? dto.roles as any : ["user"],
+      };
+      
+      // Create user
       const prismaUser = await this.prisma.user.create({
         data: createData as unknown as Prisma.UserCreateInput,
       });
 
       const user = transformValidatePrismaUser(prismaUser);
       if (!user) {
-        console.error("Failed to validate created user data.");
-        return null; // Return null if validation fails
+        this.logger.error('Failed to validate created user data.');
+        throw new InternalServerErrorException('User validation failed');
       }
       return user;
-
     } catch (error) {
-      console.error("Error creating user:", error);
-      return null; // Return null in case of database errors
+      // Check for Prisma unique constraint violation (duplicate email)
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        this.logger.warn(`Attempted to create duplicate user with email: ${dto.email}`);
+        throw new ConflictException('Email already exists');
+      }
+
+      this.logger.error('Unexpected error creating user:', error);
+      throw new InternalServerErrorException('Failed to create user');
     }
   }
-
   async findById(id: string): Promise<IUser | null> {
     try {
-        const prismaUser = await this.prisma.user.findUnique({ where: { id } });
-        return prismaUser ? transformValidatePrismaUser(prismaUser) : null;
+      // Validate ID format (if UUID)
+      if (!id || !/^[0-9a-fA-F-]{36}$/.test(id)) {
+        throw new NotFoundException('Invalid user ID format');
+      }
+
+      const prismaUser = await this.prisma.user.findUnique({ where: { id } });
+      if (!prismaUser) {
+        throw new NotFoundException(`User with ID ${id} not found`);
+      }
+      
+      const user = transformValidatePrismaUser(prismaUser);
+      if (!user) {
+        this.logger.error(`User transformation failed for ID: ${id}`);
+        throw new InternalServerErrorException('User validation failed');
+      }
+
+      return user;
     } catch (error) {
-        console.error("Error finding user by ID:", error);
-        return null;
+      if (error instanceof NotFoundException || error instanceof InternalServerErrorException) {
+        throw error;
+      }
+
+      this.logger.error(`Error finding user by ID: ${id}`, error);
+      throw new InternalServerErrorException('Error retrieving user');
     }
 }
 
-
   async findByEmail(email: string): Promise<IUser | null> {
-      try {
-          const prismaUser = await this.prisma.user.findUnique({ where: { email } });
-          return prismaUser ? transformValidatePrismaUser(prismaUser) : null;
-      } catch (error) {
-          this.logger.error("Error finding user by email:", error);
-          throw new BadRequestException('Invalid email or password');
-      }
+    if (!email) throw new BadRequestException('Email is required');
+    return this.findAndTransform({ email });
   }
 
   async findByUsername(name: string): Promise<IUser | null> {
-      try {
-          const prismaUser = await this.prisma.user.findFirst({
-            where: { name }
-          });
-          return prismaUser ? transformValidatePrismaUser(prismaUser) : null;
-      } catch (error) {
-          console.error("Error finding user by username:", error);
-          return null;
-      }
+    if (!name) throw new BadRequestException('Username is required');
+    return this.findAndTransform({ name });
   }
 
-  async update(id: string, dto: UpdateUserDto): Promise<IUser | null> {
-    try {
-        const prismaUser = await this.prisma.user.update({
-          where: {
-            id
-          },
-          data: dto as any
-        });
-        return transformValidatePrismaUser(prismaUser);
-    } catch (error) {
-        this.logger.error("Error updating user:", error.message);
-        return null;
+  async update(id: string, dto: UpdateUserDto): Promise<IUser> {
+    if (!id) {
+      throw new BadRequestException('User ID is required');
     }
-}
+
+    try {
+      const prismaUser = await this.prisma.user.update({
+        where: { id },
+        data: dto as any,
+      });
+
+      const user = transformValidatePrismaUser(prismaUser);
+      if (!user) {
+        this.logger.error(`User transformation failed for ID: ${id}`);
+        throw new InternalServerErrorException('User validation failed after update');
+      }
+
+      return user;
+    } catch (error) {
+      // Prisma throws a specific error if the record doesn't exist
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2025') {
+          throw new NotFoundException(`User with ID ${id} not found`);
+        }
+      }
+
+      this.logger.error(`Error updating user with ID ${id}:`, error);
+      throw new InternalServerErrorException('Failed to update user');
+    }
+  }
 
   async updatePassword(
     id: string, hashedPassword: string
@@ -551,4 +562,12 @@ async storeTOTPSecret(userId: string, encryptedSecret: string): Promise<IUser | 
       .update(token + pepper)
       .digest('hex');
   }
+
+  private async findAndTransform(where: any): Promise<IUser | null> {
+    const prismaUser = await this.prisma.user.findFirst({ where });
+    if (!prismaUser) return null;
+    const user = transformValidatePrismaUser(prismaUser);
+    if (!user) throw new InternalServerErrorException('User validation failed');
+    return user;
+  }  
 }
