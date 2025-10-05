@@ -69,11 +69,7 @@ export class UserRepository {
   }
   async findById(id: string): Promise<IUser | null> {
     try {
-      // Validate ID format (if UUID)
-      if (!id || !/^[0-9a-fA-F-]{36}$/.test(id)) {
-        throw new NotFoundException('Invalid user ID format');
-      }
-
+      
       const prismaUser = await this.prisma.user.findUnique({ where: { id } });
       if (!prismaUser) {
         throw new NotFoundException(`User with ID ${id} not found`);
