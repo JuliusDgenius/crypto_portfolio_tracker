@@ -13,14 +13,17 @@ async function bootstrap() {
 
    // Enable cors
    app.enableCors({
-     origin: ['https://cryptocurrency-tracker-frontend.vercel.app', 'https://crypto-portfolio-backend-zq68.onrender.com', 'http://localhost:5173'],
+     origin: [
+      'https://cryptocurrency-tracker-frontend.vercel.app', 
+      'http://localhost:5173'
+    ],
      credentials: true,
      allowedHeaders: ['Content-Type', 'Authorization'],
    });
 
   // Swagger Documentation Setup
-  const document = SwaggerModule.createDocument(app, swaggerConfig); // Create the Swagger document
-  SwaggerModule.setup('api/api-docs', app, document); // Setup the Swagger UI at the '/api/api-docs' path
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('api/api-docs', app, document);
 
   // Use validator pipes
   app.useGlobalPipes(
