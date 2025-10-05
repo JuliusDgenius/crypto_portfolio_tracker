@@ -19,6 +19,7 @@ async function bootstrap() {
     ],
      credentials: true,
      allowedHeaders: ['Content-Type', 'Authorization'],
+     exposedHeaders: ['Content-Type', 'Authorization'],
    });
 
   // Swagger Documentation Setup
@@ -35,7 +36,10 @@ async function bootstrap() {
   );
 
   // Secure HTTP headers
-  app.use(helmet());
+  app.use(helmet({
+    crossOriginResourcePolicy: false, // disable blocking
+    contentSecurityPolicy: false,     // disable strict CSP (for SSE)
+  }));
   // Compress responses
   app.use(compression());
 
