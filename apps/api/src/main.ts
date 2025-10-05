@@ -18,6 +18,7 @@ async function bootstrap() {
       'http://localhost:5173'
     ],
      credentials: true,
+     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
      allowedHeaders: ['Content-Type', 'Authorization'],
      exposedHeaders: ['Content-Type', 'Authorization'],
    });
@@ -48,6 +49,14 @@ async function bootstrap() {
   // set global prefix from environment variable
   app.setGlobalPrefix(process.env.API_PREFIX || 'api');
   
+  app.use('/api/stream/prices', (req, res, next) => {
+    res.header('Access-Control-Allow-Origin', 'https://cryptocurrency-tracker-frontend.vercel.app');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Cache-Control', 'no-cache');
+    res.header('Connection', 'keep-alive');
+    res.header('Content-Type', 'text/event-stream');
+    next();
+  });
   
   await app.listen(process.env.PORT ?? 3000);
 }
