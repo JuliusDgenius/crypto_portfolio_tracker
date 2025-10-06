@@ -1,4 +1,10 @@
-import { Controller, Sse, MessageEvent, UseGuards } from '@nestjs/common';
+import { 
+  Controller, 
+  Sse, 
+  MessageEvent, 
+  UseGuards,
+  Logger,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -9,13 +15,24 @@ import { WebSocketGuard } from '../../../common/src';
 @UseGuards(WebSocketGuard)
 @Controller('stream')
 export class WebSocketController {
-  constructor(private readonly webSocketService: WebSocketService) {}
+  private readonly logger = new Logger(WebSocketController.name);
+
+  constructor(
+    private readonly webSocketService: WebSocketService
+  ) {}
 
   @Sse('prices')
-  @ApiOperation({ summary: 'Get real-time price updates via Server-Sent Events (SSE)' })
-  @ApiResponse({ status: 200, description: 'SSE connection established successfully' })
+  @ApiOperation({
+    summary: 'Get real-time price updates via Server-Sent Events (SSE)' 
+  })
+  @ApiResponse({ 
+    status: 200, description: 'SSE connection established successfully' 
+  })
   streamPrices(): Observable<MessageEvent> {
-    return this.webSocketService.priceUpdates$.pipe(
+    this.logger.debug('Price stream server sent event endpoint hit...');
+    const result = this.webSocketService.priceUpdates$;
+    this.logger.log("Data returned by webSocketServer.priceUpdate$:", result);
+    return result.pipe(
       map(data => ({
         data,
         id: Date.now().toString(),
