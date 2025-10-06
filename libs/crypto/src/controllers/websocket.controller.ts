@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { map, tap } from 'rxjs/operators';
 import { WebSocketService } from '../services/websocket.service';
 import { WebSocketGuard } from '../../../common/src';
 
@@ -30,15 +30,25 @@ export class WebSocketController {
   })
   streamPrices(): Observable<MessageEvent> {
     this.logger.debug('Price stream server sent event endpoint hit...');
-    const result = this.webSocketService.priceUpdates$;
-    this.logger.log("Data returned by webSocketServer.priceUpdate$:", result);
-    return result.pipe(
+    return this.webSocketService.priceUpdates$.pipe(
+      tap(data => {
+        this.logger.log('--- Raw Price Update Emitted ---');
+	this.logger.log(JSON.stringify(data));
+        this.logger.log('--------------------------------');
+      }),
+
       map(data => ({
         data,
         id: Date.now().toString(),
         type: 'price-update',
         retry: 15000
-      }))
+      })),
+
+      tap(transformedData => {
+        this.logger.log('--- SSE MessageEvent (After Map) ---');
+        this.logger.log(JSON.stringify(transformedData));
+        this.logger.log('------------------------------------');
+      })
     );
   }
 }

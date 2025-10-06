@@ -6,7 +6,7 @@ import { MarketService } from './services/market.service';
 import { WebSocketService } from './services/websocket.service';
 import { PriceUpdateJob } from './jobs/price-update.job';
 import { RedisModule } from '../../database/src';
-import { MarketController, PriceController } from './controllers';
+import { MarketController, PriceController, WebSocketController } from './controllers';
 import { CryptoService } from './services/crypto.service';
 import { ExchangeRateService } from './services/exchange-rate.service';
 
@@ -19,7 +19,11 @@ import { ExchangeRateService } from './services/exchange-rate.service';
       port: parseInt(process.env.REDIS_PORT) || 6379,
     }),
   ],
-  controllers: [MarketController, PriceController],
+  controllers: [
+    MarketController, 
+    PriceController,
+    WebSocketController,
+  ],
   providers: [
     PriceService, MarketService,
     WebSocketService, PriceUpdateJob,

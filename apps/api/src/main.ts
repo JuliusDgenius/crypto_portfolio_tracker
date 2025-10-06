@@ -42,21 +42,15 @@ async function bootstrap() {
     contentSecurityPolicy: false,     // disable strict CSP (for SSE)
   }));
   // Compress responses
-  app.use(compression());
+  app.use((req, res, next) => {
+    if (req.path === '/api/stream/prices') return next();
+    return compression()(req, res, next);
+  });
 
   const reflector = app.get(Reflector);
   app.useGlobalGuards(new RolesGuard(reflector));
   // set global prefix from environment variable
   app.setGlobalPrefix(process.env.API_PREFIX || 'api');
-  
-  app.use('/api/stream/prices', (req, res, next) => {
-    res.header('Access-Control-Allow-Origin', 'https://cryptocurrency-tracker-frontend.vercel.app');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Cache-Control', 'no-cache');
-    res.header('Connection', 'keep-alive');
-    res.header('Content-Type', 'text/event-stream');
-    next();
-  });
   
   await app.listen(process.env.PORT ?? 3000);
 }
