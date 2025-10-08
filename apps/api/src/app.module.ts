@@ -1,4 +1,7 @@
-import { DatabaseModule } from '../../../libs/database/src';
+import { APP_GUARD } from '@nestjs/core';
+import { 
+  DatabaseModule, RateLimitGuard 
+} from '../../../libs/database/src';
 import { AuthModule } from '../../../libs/auth/src';
 import { CryptoModule } from '../../../libs/crypto/src';
 import { PortfolioModule } from '../../../libs/portfolio/src';
@@ -39,5 +42,11 @@ import { CoreModule } from '../../../libs/core/src/core.module';
     WatchlistModule,
     AlertsModule,
   ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: RateLimitGuard,
+    },
+  ]
 })
 export class AppModule {}

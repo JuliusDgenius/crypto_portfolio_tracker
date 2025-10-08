@@ -49,7 +49,6 @@ export class RedisService implements OnModuleDestroy {
     return this.client.pipeline();
   }
 
-
   async zadd(key: string, score: number, number: number) {
     try {
       const result = await this.client.zadd(key, score, number);
@@ -57,6 +56,26 @@ export class RedisService implements OnModuleDestroy {
       console.error(`Could not add ${error}`);
       throw error.stack;
     }
+  }
+
+  async incr(key: string): Promise<number> {
+    return this.client.incr(key);
+  }
+  
+  async expire(key: string, ttl: number): Promise<void> {
+    await this.client.expire(key, ttl);
+  }
+  
+  async exists(key: string): Promise<number> {
+    return this.client.exists(key);
+  }
+
+  async ttl(key: string): Promise<number> {
+    return this.client.ttl(key);
+  }
+  
+  async del(key: string): Promise<number> {
+    return this.client.del(key);
   }
 
   async onModuleDestroy() {

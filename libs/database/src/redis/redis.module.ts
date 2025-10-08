@@ -1,8 +1,10 @@
-import { DynamicModule, Module } from '@nestjs/common';
+import { DynamicModule, Module, Global } from '@nestjs/common';
 import { RedisService } from './redis.service';
 import { REDIS_OPTIONS } from './redis.constants';
 import { RedisOptions } from './interfaces/redis-options.interface';
+import { RateLimitService } from './rate-limiter.service';
 
+@Global()
 @Module({})
 export class RedisModule {
   static forRoot(options: RedisOptions): DynamicModule {
@@ -14,8 +16,12 @@ export class RedisModule {
           useValue: options,
         },
         RedisService,
+        RateLimitService,
       ],
-      exports: [RedisService],
+      exports: [
+        RedisService,
+        RateLimitService,
+      ],
       global: true,
     };
   }
