@@ -1,16 +1,24 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { 
+	CanActivate, ExecutionContext, 
+	Injectable, HttpException, 
+	HttpStatus, Logger
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { NO_RATE_LIMIT, RATE_LIMIT_KEY } from '../../../../common/src';
 import { RateLimitService } from '../rate-limiter.service';
 
 @Injectable()
 export class RateLimitGuard implements CanActivate {
+  private readonly logger = new Logger(RateLimitGuard.name);
+
   constructor(
     private reflector: Reflector,
     private rateLimiter: RateLimitService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    this.logger.log("Rate limiter guard check started...");
+
     const handler = context.getHandler();
     const controller = context.getClass();
 
@@ -41,8 +49,10 @@ export class RateLimitGuard implements CanActivate {
     const result = await this.rateLimiter.consume(compositeKey, rule);
 
     if (!result.ok) {
-      throw new Error(
+      this.logger.error(`Rate limit exceeded. Try again in ${(result.msBeforeNext / 1000).toFixed(1)}s`);
+      throw HttpException(
         `Rate limit exceeded. Try again in ${(result.msBeforeNext / 1000).toFixed(1)}s`,
+	HttpStatus.TOO_MANY_REQUESTS,
       );
     }
 
