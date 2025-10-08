@@ -1,4 +1,6 @@
-import { Injectable, Inject, OnModuleDestroy, Logger } from '@nestjs/common';
+import { 
+  Injectable, Inject, OnModuleDestroy, Logger 
+} from '@nestjs/common';
 import { REDIS_OPTIONS } from './redis.constants';
 import { RedisOptions } from './interfaces';
 import { Redis, ChainableCommander } from 'ioredis';

@@ -153,14 +153,17 @@ export class PriceController {
     @Param('symbol') symbol: string,
     @Query('indicators') indicators: string
   ) {
-    const indicatorArray = indicators.split(',').map(i => i.trim().toLowerCase());
+    const indicatorArray = indicators.split(
+      ',').map(i => i.trim().toLowerCase()
+    );
     return this.priceService.getPriceIndicators(symbol, indicatorArray);
   }
 
   @Get('available')
   @ApiOperation({ 
     summary: 'Get list of available cryptocurrencies',
-    description: 'Returns a list of available cryptocurrencies with their basic information including symbol, name, and current price'
+    description: 'Returns a list of available cryptocurrencies \
+      with their basic information including symbol, name, and current price'
   })
   @ApiResponse({ 
     status: 200, 

@@ -407,7 +407,8 @@ async getAssetInfo(symbol: string): Promise<IAssetInfo> {
 }
 
 /**
- * Retrieves a list of available cryptocurrencies with their basic information.
+ * Retrieves a list of available cryptocurrencies 
+ * with their basic information.
  * Uses caching to optimize performance and reduce API calls.
  * 
  * @returns Promise containing array of cryptocurrency information
@@ -420,22 +421,39 @@ async getAvailableCryptos(): Promise<Array<{
 }>> {
   const cacheKey = `${this.cacheConfig.currentPrice.prefix}available_cryptos`;
   const cached = await this.redisService.get(cacheKey);
-  if (cached) return JSON.parse(cached);
+  if (cached) {
+    this.logger.log("Cache hit: Fetching catched data...");
+    return JSON.parse(cached);
+  }
 
+  this.logger.log("Cache miss: Making API call for crypto assets...");
   try {
     const cryptos = await this.withRetry(
-      () => this.fetchAvailableCryptosFromAPI(), this.maxRetries, this.retryDelay
+      () => this.fetchAvailableCryptosFromAPI(), 
+      this.maxRetries, this.retryDelay
     );
-    await this.redisService.set(cacheKey, JSON.stringify(cryptos), 'EX', this.cacheConfig.currentPrice.duration);
+    this.logger.log("Caching fetched data in Redis...");
+    await this.redisService.set(
+      cacheKey, JSON.stringify(cryptos), 'EX', 
+      this.cacheConfig.currentPrice.duration
+    );
     return cryptos;
   } catch (error) {
-    this.logger.error(`getAvailableCryptos failed: ${error.message}`);
+    this.logger.error(
+      `getAvailableCryptos failed: ${
+        error.status,
+        error.message,
+        error.stack
+      }`
+    );
     const stale = await this.redisService.get(cacheKey); 
     if (stale) {
       this.logger.warn('Returning stale cached data due to API failure');
       return JSON.parse(stale);
     }
-    throw new InternalServerErrorException('Unable to fetch available cryptocurrencies at this time.');
+    throw new InternalServerErrorException(
+      'Unable to fetch available cryptocurrencies at this time.'
+    );
   }
 }
 
@@ -443,7 +461,9 @@ async getAvailableCryptos(): Promise<Array<{
 private async fetchAvailableCryptosFromAPI() {
   const { data } = await firstValueFrom(
     this.httpService.get(`${this.baseUrl}/coins/markets`, {
-      params: { vs_currency: 'usd', order: 'market_cap_desc', per_page: this.perPage, page: 1 },
+      params: { vs_currency: 'usd', order: 'market_cap_desc', 
+        per_page: this.perPage, page: 1 
+      },
       headers: { 'x-cg-api-key': this.apiKey },
       timeout: this.timeout,
     }),
@@ -453,8 +473,14 @@ private async fetchAvailableCryptosFromAPI() {
 
   return data
     .map(coin => {
-      if (!coin?.symbol || !coin?.name || typeof coin.current_price !== 'number') return null;
-      return { symbol: coin.symbol.toUpperCase(), name: coin.name, currentPrice: coin.current_price };
+      if (
+        !coin?.symbol || !coin?.name || 
+        typeof coin.current_price !== 'number') return null;
+      return { 
+        symbol: coin.symbol.toUpperCase(), 
+        name: coin.name, 
+        currentPrice: coin.current_price 
+      };
     })
     .filter(Boolean);
 }
