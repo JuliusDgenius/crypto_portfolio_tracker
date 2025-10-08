@@ -19,12 +19,14 @@ import {
 import { PriceService } from '../services';
 import { IAssetInfo, ICryptoPrice } from '../interfaces';
 import { GetPricesDto, GetAssetInfoDto } from '../dto';
-import { JwtAuthGuard } from '../../../common/src';
+import { JwtAuthGuard, RateLimit } from '../../../common/src';
+import { RateLimitGuard } from '../../../database/src'
 
 /**
  * Controller for handling cryptocurrency price requests.
  */
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RateLimitGuard)
+@RateLimit({ key: 'prices-controller', rule: { points: 30, duration: 60 } })
 @ApiSecurity('JWT-auth')
 @ApiTags('Cryptocurrency Prices')
 @Controller('prices')
@@ -42,6 +44,8 @@ export class PriceController {
    * @returns A promise that resolves to an array of ICryptoPrice objects.
    * @throws HttpException if the request fails.
    */
+
+  @RateLimit({ key: 'get-prices', rule: { points: 5, duration: 60 } })
   @Get()
   @ApiOperation({ summary: 'Get prices for multiple cryptocurrencies' })
   @ApiQuery({ 
@@ -70,6 +74,7 @@ export class PriceController {
    * Retrieves asset information for a cryptocurrency.
    * @param symbol - The cryptocurrency symbol
    */
+  @RateLimit({ key: 'get-asset-info', rule: { points: 5, duration: 60 } })
   @Get('asset/info')
   @ApiOperation({ summary: 'Get asset information for a crypto asset' })
   @ApiQuery({ 
@@ -77,7 +82,9 @@ export class PriceController {
   description: 'cryptocurrency symbol',
   example: 'bitcoin'
   })
-  @ApiResponse({ status: 200, description: 'Asset information retrieved successfully' })
+  
+  @ApiResponse({ 
+    status: 200, description: 'Asset information retrieved successfully' })
   @ApiResponse({ status: 400, description: 'Invalid request parameters' })
   async getAssetInfo(
     @Query(new ValidationPipe({ transform: true })) query: GetAssetInfoDto
@@ -92,6 +99,7 @@ export class PriceController {
    * @param range - Time range for historical data (1d, 7d, 30d, 90d, 1y)
    * @param interval - Data point interval (1h, 4h, 1d)
    */
+  @RateLimit({ key: 'get-price-history', rule: { points: 5, duration: 60 } })
   @Get(':symbol/history')
   @ApiOperation({ summary: 'Get historical price data for a cryptocurrency' })
   @ApiParam({ name: 'symbol', description: 'Cryptocurrency symbol (e.g., bitcoin)' })
@@ -112,6 +120,7 @@ export class PriceController {
    * - Circulating supply
    * - All-time high/low
    */
+  @RateLimit({ key: 'get-stats', rule: { points: 5, duration: 60 } })
   @Get(':symbol/stats')
   @ApiOperation({ summary: 'Get detailed market statistics' })
   @ApiParam({ name: 'symbol', description: 'Cryptocurrency symbol (e.g., bitcoin)' })
@@ -123,6 +132,7 @@ export class PriceController {
    * Retrieves price comparison data between multiple cryptocurrencies
    * over a specified time period
    */
+  @RateLimit({ key: 'compare', rule: { points: 5, duration: 60 } })
   @Get('compare')
   @ApiOperation({ summary: 'Compare price performance of multiple cryptocurrencies' })
   @ApiQuery({ 
@@ -146,6 +156,7 @@ export class PriceController {
    * - Trading volume
    * - Price momentum
    */
+  @RateLimit({ key: 'get-price-indicator', rule: { points: 5, duration: 60 } })
   @Get(':symbol/indicators')
   @ApiOperation({ summary: 'Get technical price indicators' })
   @ApiParam({ name: 'symbol', description: 'Cryptocurrency symbol (e.g., bitcoin)' })
@@ -159,6 +170,7 @@ export class PriceController {
     return this.priceService.getPriceIndicators(symbol, indicatorArray);
   }
 
+  @RateLimit({ key: 'get-available-cryptos', rule: { points: 5, duration: 60 } })
   @Get('available')
   @ApiOperation({ 
     summary: 'Get list of available cryptocurrencies',
