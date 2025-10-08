@@ -50,7 +50,7 @@ export class RateLimitGuard implements CanActivate {
 
     if (!result.ok) {
       this.logger.error(`Rate limit exceeded. Try again in ${(result.msBeforeNext / 1000).toFixed(1)}s`);
-      throw HttpException(
+      throw new HttpException(
         `Rate limit exceeded. Try again in ${(result.msBeforeNext / 1000).toFixed(1)}s`,
 	HttpStatus.TOO_MANY_REQUESTS,
       );
