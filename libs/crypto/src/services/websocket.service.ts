@@ -26,8 +26,9 @@ export class WebSocketService implements OnModuleInit, OnModuleDestroy {
   private readonly binance_ws_url: string;
   
   // Use BehaviorSubject for connection state to always have a current value
-  private readonly connectionState = new BehaviorSubject<ConnectionState>(ConnectionState.DISCONNECTED);
-  private readonly priceUpdates = new Subject<PriceUpdate>();
+  private readonly connectionState = new BehaviorSubject<ConnectionState>(
+    ConnectionState.DISCONNECTED);
+  private readonly priceUpdates = new Subject<PriceUpdate[]>();
   
   // Configuration parameters
   private reconnectAttempts: number;
@@ -43,11 +44,21 @@ export class WebSocketService implements OnModuleInit, OnModuleDestroy {
   constructor(
   private readonly configService: ConfigService,
   ) {
-    this.binance_ws_url = this.configService.get<string>('BINANCE_WEBSOCKET_URL');
-    this.reconnectAttempts = this.configService.get<number>('RECONNECT_ATTEMPTS');
-    this.maxReconnectAttempts = this.configService.get<number>('MAX_RECONNECT_ATTEMPTS');
-    this.reconnectDelay = this.configService.get<number>('RECONNECT_DELAY');
-    this.pingInterval = this.configService.get<number>('PING_INTERVAL');
+    this.binance_ws_url = this.configService.get<string>(
+      'BINANCE_WEBSOCKET_URL'
+    );
+    this.reconnectAttempts = this.configService.get<number>(
+      'RECONNECT_ATTEMPTS'
+    );
+    this.maxReconnectAttempts = this.configService.get<number>(
+      'MAX_RECONNECT_ATTEMPTS'
+    );
+    this.reconnectDelay = this.configService.get<number>(
+      'RECONNECT_DELAY'
+    );
+    this.pingInterval = this.configService.get<number>(
+      'PING_INTERVAL'
+    );
   }
 
   onModuleInit() {
@@ -69,7 +80,9 @@ export class WebSocketService implements OnModuleInit, OnModuleDestroy {
       this.ws = new WebSocket(this.binance_ws_url);
       this.setupEventHandlers();
     } catch (error) {
-      this.logger.error(`Failed to create WebSocket connection: ${error.message}`);
+      this.logger.error(
+        `Failed to create WebSocket connection: ${error.message}`
+      );
       this.handleConnectionError();
     }
   }
@@ -90,13 +103,15 @@ export class WebSocketService implements OnModuleInit, OnModuleDestroy {
         // Transform raw data into our PriceUpdate interface
         if (Array.isArray(parsedData)) {
           const priceUpdates = this.transformPriceData(parsedData);
-          priceUpdates.forEach(update => this.priceUpdates.next(update));
+          this.priceUpdates.next(priceUpdates);
         } else {
           this.logger.warn('Received data is not an array');
         }
         
       } catch (error) {
-        this.logger.error(`Error processing WebSocket message: ${error.message}`);
+        this.logger.error(
+          `Error processing WebSocket message: ${error.message}`
+        );
       }
     });
 
@@ -169,7 +184,8 @@ export class WebSocketService implements OnModuleInit, OnModuleDestroy {
   private calculateReconnectDelay(): number {
     // Exponential backoff with jitter
     const baseDelay = this.reconnectDelay;
-    const exponentialDelay = baseDelay * Math.pow(2, this.reconnectAttempts - 1);
+    const exponentialDelay = baseDelay * Math.pow(
+      2, this.reconnectAttempts - 1);
     const jitter = Math.random() * 1000; // Add up to 1 second of random jitter
     return Math.min(exponentialDelay + jitter, 30000); // Cap at 30 seconds
   }
@@ -196,7 +212,8 @@ export class WebSocketService implements OnModuleInit, OnModuleDestroy {
       try {
         this.ws.close(1000, 'Service shutdown');
       } catch (error) {
-        this.logger.error(`Error during WebSocket cleanup: ${error.message}`);
+        this.logger.error(
+          `Error during WebSocket cleanup: ${error.message}`);
       }
     }
     
