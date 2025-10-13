@@ -33,7 +33,7 @@ export class WebSocketController {
     return this.webSocketService.priceUpdates$.pipe(
       tap(data => {
         this.logger.log('--- Raw Price Update Emitted ---');
-	this.logger.log(JSON.stringify(data));
+	      this.logger.log(JSON.stringify(data.slice(0, 6)));
         this.logger.log('--------------------------------');
       }),
 
@@ -46,7 +46,7 @@ export class WebSocketController {
 
       tap(transformedData => {
         this.logger.log('--- SSE MessageEvent (After Map) ---');
-        this.logger.log(JSON.stringify(transformedData));
+        this.logger.log(JSON.stringify((transformedData.data as any[]).slice(0, 6)));
         this.logger.log('------------------------------------');
       })
     );
