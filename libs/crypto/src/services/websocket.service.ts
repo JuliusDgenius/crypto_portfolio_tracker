@@ -4,7 +4,7 @@ import { Subject, BehaviorSubject } from 'rxjs';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '../../../config/src';
 
-// Define clear types for our WebSocket messages
+// Define clear types for WebSocket messages
 interface PriceUpdate {
   symbol: string;
   price: number;
@@ -90,7 +90,10 @@ export class WebSocketService implements OnModuleInit, OnModuleDestroy {
   private setupEventHandlers() {
     // Connection established
     this.ws.on('open', () => {
-      this.logger.log('WebSocket connected successfully');
+      this.logger.log(
+        '✅✅✅ WebSocket connection to Binance OPENED successfully.\
+         Subscribing to prices...'
+      )
       this.connectionState.next(ConnectionState.CONNECTED);
       this.reconnectAttempts = 0;
       this.subscribeToPriceUpdates();
@@ -98,6 +101,9 @@ export class WebSocketService implements OnModuleInit, OnModuleDestroy {
 
     // Receiving messages
     this.ws.on('message', (data: string) => {
+      this.logger.log(
+        `📦 Raw message received from Binance: ${data.toString()}`
+      );
       try {
         const parsedData = JSON.parse(data);
         // Transform raw data into our PriceUpdate interface
@@ -117,14 +123,18 @@ export class WebSocketService implements OnModuleInit, OnModuleDestroy {
 
     // Connection closed
     this.ws.on('close', (code: number, reason: string) => {
-      this.logger.warn(`WebSocket disconnected: ${code} - ${reason}`);
+      this.logger.warn(
+        `❌ WebSocket DISCONNECTED: Code=${code}, Reason=${reason.toString()}`
+      );
       this.connectionState.next(ConnectionState.DISCONNECTED);
       this.handleDisconnection();
     });
 
     // Error handling
     this.ws.on('error', (error) => {
-      this.logger.error(`WebSocket error occurred: ${error.message}`);
+      this.logger.error(
+        `🔥🔥🔥 WebSocket ERROR occurred: ${error.message}`, error.stack
+      );
       this.connectionState.next(ConnectionState.ERROR);
       this.handleConnectionError();
     });
