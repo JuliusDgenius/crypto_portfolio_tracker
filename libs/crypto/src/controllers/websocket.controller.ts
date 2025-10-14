@@ -5,7 +5,7 @@ import {
   UseGuards,
   Logger,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiSecurity, } from '@nestjs/swagger';
 import { Observable } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
 import { WebSocketService } from '../services/websocket.service';
