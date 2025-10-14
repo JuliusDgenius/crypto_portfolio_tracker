@@ -13,6 +13,7 @@ import { WebSocketGuard } from '../../../common/src';
 
 @ApiTags('Real-time Price Updates')
 @UseGuards(WebSocketGuard)
+@ApiSecurity('JWT-auth')
 @Controller('stream')
 export class WebSocketController {
   private readonly logger = new Logger(WebSocketController.name);
