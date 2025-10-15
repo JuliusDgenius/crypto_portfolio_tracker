@@ -32,7 +32,9 @@ export class WebSocketController {
     status: 200, description: 'SSE connection established successfully' 
   })
   streamPrices(@Res() res: Response): Observable<MessageEvent> {
-    res.setHeader('Access-Control-Allow-Origin', 'https://crypto-portfolio-backend-zq68.onrender.com')
+    const origin = ['https://crypto-portfolio-backend-zq68.onrender.com',
+      'https://cryptocurrency-tracker-frontend.vercel.app']
+    res.setHeader('Access-Control-Allow-Origin', origin)
     this.logger.debug('Price stream server sent event endpoint hit...');
     
     return this.webSocketService.priceUpdates$.pipe(
