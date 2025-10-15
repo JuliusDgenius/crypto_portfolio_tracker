@@ -4,12 +4,14 @@ import {
   MessageEvent, 
   UseGuards,
   Logger,
+  Res,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiSecurity, } from '@nestjs/swagger';
 import { Observable } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
 import { WebSocketService } from '../services/websocket.service';
 import { WebSocketGuard } from '../../../common/src';
+import { Response } from 'express';
 
 @ApiTags('Real-time Price Updates')
 @UseGuards(WebSocketGuard)
@@ -29,7 +31,8 @@ export class WebSocketController {
   @ApiResponse({ 
     status: 200, description: 'SSE connection established successfully' 
   })
-  streamPrices(): Observable<MessageEvent> {
+  streamPrices(@Res() res: Response): Observable<MessageEvent> {
+    res.setHeader('Access-Control-Allow-Origin', 'https://crypto-portfolio-backend-zq68.onrender.com')
     this.logger.debug('Price stream server sent event endpoint hit...');
     
     return this.webSocketService.priceUpdates$.pipe(
