@@ -19,8 +19,8 @@ async function bootstrap() {
     ],
      credentials: true,
      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-     allowedHeaders: ['Content-Type', 'Authorization'],
-     exposedHeaders: ['Content-Type', 'Authorization'],
+     allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control'],
+     exposedHeaders: ['Content-Type', 'Authorization', 'Cache-Control'],
    });
 
   // Swagger Documentation Setup

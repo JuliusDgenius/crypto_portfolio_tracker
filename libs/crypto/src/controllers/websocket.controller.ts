@@ -31,6 +31,7 @@ export class WebSocketController {
   })
   streamPrices(): Observable<MessageEvent> {
     this.logger.debug('Price stream server sent event endpoint hit...');
+    
     return this.webSocketService.priceUpdates$.pipe(
       tap(data => {
         this.logger.log('--- Raw Price Update Emitted ---');
@@ -39,7 +40,7 @@ export class WebSocketController {
       }),
 
       map(data => ({
-        data,
+        data: JSON.stringify(data), // Properly serialize the data for SSE
         id: Date.now().toString(),
         type: 'price-update',
         retry: 15000

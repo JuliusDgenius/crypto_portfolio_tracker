@@ -28,7 +28,7 @@ export class WebSocketService implements OnModuleInit, OnModuleDestroy {
   // Use BehaviorSubject for connection state to always have a current value
   private readonly connectionState = new BehaviorSubject<ConnectionState>(
     ConnectionState.DISCONNECTED);
-  private readonly priceUpdates = new Subject<PriceUpdate[]>();
+  private readonly priceUpdates = new BehaviorSubject<PriceUpdate[]>([]);
   
   // Configuration parameters
   private reconnectAttempts: number;
