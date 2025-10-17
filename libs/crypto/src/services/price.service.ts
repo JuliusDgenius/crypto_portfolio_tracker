@@ -1,4 +1,9 @@
-import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import { 
+  BadRequestException, 
+  Injectable, 
+  InternalServerErrorException, 
+  Logger, 
+  UnauthorizedException} from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '../../../config/src';
 import { RedisService } from '../../../database/src';
@@ -21,6 +26,7 @@ export class PriceService {
   private readonly logger = new Logger(PriceService.name);
   private readonly baseUrl: string;
   private readonly apiKey: string;
+  private readonly apiPlan: string;
   private readonly cacheDuration: number; // 5 minutes
   private readonly perPage = this.configService.get<number>('PER_PAGE');
   private readonly maxRetries = this.configService.get<number>('MAX_RETRIES');
@@ -49,6 +55,14 @@ export class PriceService {
     }
   };
 
+  private readonly dynamicCacheDurations = {
+    '24h': 300,     // 5 minutes
+    '7d': 1800,     // 30 minutes
+    '30d': 3600,    // 1 hour
+    '90d': 7200,    // 2 hours
+    '1y': 21600     // 6 hours
+  };
+
   /**
    * Creates an instance of PriceService.
    * @param httpService - The HTTP service for making API requests.
@@ -61,7 +75,11 @@ export class PriceService {
     private readonly redisService: RedisService,
   ) {
     this.baseUrl = this.configService.get('COINGECKO_API_BASE_URL');
+    this.logger.debug(`[COINGECKO BASE URL] ${this.baseUrl}`);
     this.apiKey = this.configService.get('COINGECKO_API_KEY');
+    this.logger.debug(`[COINGECKO KEY CHECK] ${this.apiKey ? 'API key detected' : 'API key is undefined/null'}`);
+    this.cacheDuration = this.configService.get<number>('CACHE_DURATION') || 300;
+    this.apiPlan = this.configService.get<string>('COINGECKO_API_PLAN') || 'free';
     
     // Warn if API key is missing
     if (!this.apiKey) {
@@ -114,7 +132,7 @@ export class PriceService {
       return [...cachedData, ...prices];
     } catch (error) {
       this.logger.error(`Error fetching prices: ${error.message}`);
-      throw error;
+      throw new InternalServerErrorException(`Error fetching prices: ${error.message}`);
     }
   }
 
@@ -168,6 +186,7 @@ export class PriceService {
     interval: string
   ): Promise<IHistoricalPrice[]> {
     const cacheKey = `${this.cacheConfig.historicalPrice.prefix}${symbol}:${range}:${interval}`;
+    this.logger.debug(`[HISTORICAL] Checking cache for ${symbol} (${range})...`);
     
     // Try to get data from cache first
     const cachedData = await this.redisService.get(cacheKey);
@@ -176,55 +195,77 @@ export class PriceService {
       
       // Check if cached data is still valid for the requested range
       if (this.isHistoricalDataValid(parsedData, range)) {
+        this.logger.debug(`[HISTORICAL] Cache hit for ${symbol} (${range})`);
         return parsedData;
+      } else {
+        this.logger.debug(`[HISTORICAL] Cache invalid for ${symbol} (${range}) — refreshing...`);
       }
     }
 
     try {
       // Convert interval to CoinGecko interval
       const geckoInterval = this.getGeckoInterval(range);
+      const days = this.getNumberOfDays(range);
+      // Determine interval parameter for CoinGecko free API
+      const params: any = { vs_currency: 'usd', days };
+      if (this.apiPlan === 'pro' && interval) {
+        const optimal = this.getOptimalInterval(range);
+        params.interval = this.mapToGeckoInterval(optimal);
+      }
+
+      this.logger.log(
+        `[HISTORICAL FETCH START] ${symbol} | range=${range}, interval=${geckoInterval}, days=${days}`
+      );
 
       // Fetch data from API
       const { data } = await firstValueFrom(
         this.httpService.get(`${this.baseUrl}/coins/${symbol}/market_chart`, {
-          params: {
-            vs_currency: 'usd',
-            days: this.getNumberOfDays(range),
-            interval: geckoInterval
-          },
+          params,
           headers: {
             'x-cg-api-key': this.apiKey
           }
         }).pipe(
           catchError(error => {
-            if (error.response?.status === 401) {
-              this.logger.error('Unauthorized access to CoinGecko API. Please check your API key.');
-              throw new Error('API authentication failed. Please check your CoinGecko API key configuration.');
+            const status = error.response?.status;
+            const errMsg = error.message || 'Unknown error';
+            const body = JSON.stringify(error.response?.data || {});
+            this.logger.error(
+              `[HISTORICAL FETCH FAIL] ${symbol} | status=${status} | message=${errMsg} | body=${body}`
+            );
+
+            if (status === 401) {
+              throw new UnauthorizedException('Unauthorized: Check your CoinGecko API key.');
             }
-            if (error.response?.status === 429) {
-              this.logger.error('Rate limit exceeded for CoinGecko API');
-              throw new Error('Rate limit exceeded. Please try again later.');
+            if (status === 429) {
+              throw new BadRequestException('Rate limit exceeded. Try again later.');
             }
-            this.logger.error(`Failed to fetch historical prices: ${error.message}`);
-            throw error;
+            throw new InternalServerErrorException(`Failed request for ${symbol}: ${errMsg}`);
           })
         )
       );
 
       const formattedData = this.formatHistoricalData(data);
-      
+      const cacheDuration = this.getCacheDurationForTimeframe(range);
+
+      this.logger.debug(
+        `Caching historical data for ${symbol} (${range}) with TTL: ${cacheDuration}s`
+      );
+
       // Cache the data with sliding window strategy
       await this.redisService.set(
         cacheKey,
         JSON.stringify(formattedData),
         'EX',
-        this.cacheConfig.historicalPrice.duration
+        cacheDuration
       );
-
+      this.logger.log(
+        `[HISTORICAL FETCH SUCCESS] ${symbol} | ${formattedData.length} points`
+      );
       return formattedData;
     } catch (error) {
-      this.logger.error(`Error fetching historical prices: ${error.message}`);
-      throw error;
+      const message = error.message || 'No error message';
+      this.logger.error(`[HISTORICAL ERROR] ${symbol} | ${message}`);
+      throw new InternalServerErrorException(`Failed fetch historical data`);
     }
   }
 
@@ -254,7 +295,7 @@ export class PriceService {
         }).pipe(
           catchError(error => {
             this.logger.error(`Failed to fetch market stats: ${error.message}`);
-            throw error;
+            throw Error;
           })
         )
       );
@@ -272,7 +313,7 @@ export class PriceService {
       return stats;
     } catch (error) {
       this.logger.error(`Error fetching market stats: ${error.message}`);
-      throw error;
+      throw new InternalServerErrorException('Failed to fetch market stats');
     }
   }
 
@@ -284,18 +325,50 @@ export class PriceService {
     symbols: string[],
     timeframe: string
   ): Promise<Record<string, IHistoricalPrice[]>> {
-    const comparison = {};
+    const comparison: Record<string, IHistoricalPrice[]> = {};
+
+    if (!symbols && symbols.length === 0) {
+      throw new BadRequestException('symbols query parameter is required');
+    }
+
+    const cacheDuration = this.getCacheDurationForTimeframe(timeframe);
+    this.logger.log(
+      `[COMPARE START] symbols=${symbols.join(', ')} | 
+      timeframe=${timeframe} | cacheDuration=${cacheDuration}`
+    );
     
-    // Use Promise.all for parallel processing
-    await Promise.all(
+    // Use Promise.allSettled for parallel processing
+    const results = await Promise.allSettled(
       symbols.map(async (symbol) => {
-        comparison[symbol] = await this.getHistoricalPrices(
-          symbol,
-          timeframe,
-          this.getOptimalInterval(timeframe)
-        );
+        try {
+          this.logger.log(`[FETCH START] ${symbol} for timeframe=${timeframe}`);
+  
+          const data = await this.getHistoricalPrices(
+            symbol,
+            timeframe,
+            this.getOptimalInterval(timeframe)
+          );
+  
+          this.logger.log(`[FETCH SUCCESS] ${symbol} | ${data.length} records`);
+          return { symbol, data };
+        } catch (err) {
+          this.logger.error(`[FETCH ERROR] ${symbol} | ${err.message}`);
+          throw new InternalServerErrorException('Failed to fetch compare price data');
+        }
       })
     );
+
+    results.forEach((result, index) => {
+      const symbol = symbols[index];
+      if (result.status === 'fulfilled') {
+        comparison[result.value.symbol] = result.value.data;
+      } else {
+        this.logger.error(`[FETCH FAIL] ${symbol} | ${result.reason?.message || result.reason}`);
+        comparison[symbol] = []; // empty fallback for failed requests
+      }
+    });
+  
+    this.logger.log(`[COMPARE COMPLETE] processed ${symbols.length} symbols`);
 
     return comparison;
   }
@@ -343,7 +416,7 @@ export class PriceService {
       return result;
     } catch (error) {
       this.logger.error(`Error calculating indicators: ${error.message}`);
-      throw error;
+      throw new InternalServerErrorException('Failed to calculate indicators');
     }
   }
 
@@ -387,7 +460,7 @@ async getAssetInfo(symbol: string): Promise<IAssetInfo> {
       }).pipe(
         catchError(error => {
           this.logger.error(`Failed to fetch asset info: ${error.message}`);
-          throw error;
+          throw new InternalServerErrorException('Failed to fetch asset info');
         })
       )
     );
@@ -414,7 +487,7 @@ async getAssetInfo(symbol: string): Promise<IAssetInfo> {
     return assetInfo;
   } catch (error) {
     this.logger.error(`Error fetching asset info for ${symbol}: ${error.message}`);
-    throw error;
+    throw new InternalServerErrorException('Failed to fetch asset info');
   }
 }
 
@@ -512,26 +585,50 @@ private async withRetry<T>(
   }
 }
 
-  private getNumberOfDays(range: string): number {
-    const rangeMappings = {
-      '1d': 1,
-      '7d': 7,
-      '30d': 30,
-      '90d': 90,
-      '1y': 365
-    };
-    return rangeMappings[range] || 30;
+private getNumberOfDays(range: string): number {
+  const match = range.match(/^(\d+)([hdmy])$/);
+  if (!match) return 30;
+
+  const [_, value, unit] = match;
+  const num = parseInt(value, 10);
+
+  switch (unit) {
+    case 'h': return 1;     // anything in hours → treat as 1 day
+    case 'd': return num;
+    case 'm': return num * 30;
+    case 'y': return num * 365;
+    default: return 30;
   }
+}
+
 
   private getOptimalInterval(timeframe: string): string {
     const intervalMappings = {
-      '24h': '1h',
-      '7d': '4h',
-      '30d': '1d',
-      '90d': '1d',
-      '1y': '1d'
+      '1h': 'hourly',
+      '4h': 'hourly',
+      '1d': 'daily'
     };
     return intervalMappings[timeframe] || '1d';
+  }
+
+  /**
+ * Maps internal interval (e.g., '1h', '1d') to CoinGecko API interval
+ */
+private mapToGeckoInterval(optimalInterval: string): string {
+  const mapping = {
+    '1h': 'minutely',
+    '4h': 'hourly',
+    '1d': 'daily'
+  };
+  return mapping[optimalInterval] || '1h';
+}
+
+  /**
+ * Determines cache duration dynamically based on timeframe.
+ * Shorter timeframes get shorter cache lifetimes.
+ */
+  private getCacheDurationForTimeframe(timeframe: string): number {
+    return this.dynamicCacheDurations[timeframe] || this.cacheDuration;
   }
 
   private isHistoricalDataValid(
