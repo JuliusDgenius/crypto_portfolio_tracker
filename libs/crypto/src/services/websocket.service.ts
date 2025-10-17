@@ -102,7 +102,7 @@ export class WebSocketService implements OnModuleInit, OnModuleDestroy {
     // Receiving messages
     this.ws.on('message', (data: string) => {
       this.logger.log(
-        `📦 Raw message received from Binance: ${data.toString()}`
+        `📦 Raw message received from Binance: ${data.length}`
       );
       try {
         const parsedData = JSON.parse(data);
