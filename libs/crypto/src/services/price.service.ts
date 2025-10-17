@@ -62,6 +62,11 @@ export class PriceService {
   ) {
     this.baseUrl = this.configService.get('COINGECKO_API_BASE_URL');
     this.apiKey = this.configService.get('COINGECKO_API_KEY');
+    
+    // Warn if API key is missing
+    if (!this.apiKey) {
+      this.logger.warn('COINGECKO_API_KEY is not configured. Some features may not work properly.');
+    }
   }
 
   /**
@@ -186,9 +191,16 @@ export class PriceService {
             vs_currency: 'usd',
             days: this.getNumberOfDays(range),
             interval: geckoInterval
+          },
+          headers: {
+            'x-cg-api-key': this.apiKey
           }
         }).pipe(
           catchError(error => {
+            if (error.response?.status === 401) {
+              this.logger.error('Unauthorized access to CoinGecko API. Please check your API key.');
+              throw new Error('API authentication failed. Please check your CoinGecko API key configuration.');
+            }
             if (error.response?.status === 429) {
               this.logger.error('Rate limit exceeded for CoinGecko API');
               throw new Error('Rate limit exceeded. Please try again later.');
